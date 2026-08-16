@@ -1,8 +1,7 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import Cookies from 'js-cookie';
-import { fetchSession, logout as apiLogout } from '@/lib/api';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { clearLocalSession, fetchSession, logout as apiLogout } from '@/lib/api';
 import { flushExpiredKicks } from '@/lib/kicks';
 import type { User } from '@/types';
 
@@ -27,30 +26,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   // 刷新认证状态：GET /api/session（真实 StoryDen 会话检测）
-  // 未登录 / 后端不可达统一返回 null → 未认证
+  // fetchSession 语义：null = 确定未登录；抛异常 = 网络/后端错误（未知状态）。
+  // 网络错误时保持现有认证状态 —— 否则后端短暂不可达（重启/网络抖动）会把
+  // 已登录用户误登出，写操作按钮全部消失且不会自动恢复。
   const refresh = useCallback(async () => {
-    const session = await fetchSession();
-    if (session?.user) {
-      setUser(session.user);
-      setIsAuthenticated(true);
-    } else {
-      setUser(null);
-      setIsAuthenticated(false);
+    try {
+      const session = await fetchSession();
+      setUser(session?.user ?? null);
+      setIsAuthenticated(!!session?.user);
+    } catch {
+      // 网络/后端错误：保持现有状态不动
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
-  // 退出登录：POST /api/auth/logout（服务端使会话失效）+ 清除本地残留状态
+  // 退出登录：POST /api/auth/logout（服务端使会话失效）+ 清理本地残留状态
+  //（clearLocalSession 与拦截器共用同一份 cookie 清单，见 lib/api/shared.ts）
   const logout = useCallback(async () => {
     try {
       await apiLogout();
     } catch {
       // 后端不可达时忽略网络错误，继续本地清理
     }
-    Cookies.remove('storyden_session');
-    Cookies.remove('storyden-session');
-    Cookies.remove('user_name');
-    Cookies.remove('token');
+    clearLocalSession();
     setUser(null);
     setIsAuthenticated(false);
   }, []);
@@ -58,6 +57,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // 应用启动时检测会话状态
   useEffect(() => {
     refresh();
+  }, [refresh]);
+
+  // 窗口重新获得焦点时重新验证会话（节流 30s）：
+  // 被管理员移出社区 / 会话在后台过期时，切回页面立即同步 UI（显示未登录），
+  // 而不是等到下次写操作 401 才被跳转
+  const lastFocusCheck = useRef(0);
+  useEffect(() => {
+    const onFocus = () => {
+      const now = Date.now();
+      if (now - lastFocusCheck.current < 30_000) return;
+      lastFocusCheck.current = now;
+      void refresh();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
   }, [refresh]);
 
   // 管理员：踢出到期自动解封（见 lib/kicks.ts）。

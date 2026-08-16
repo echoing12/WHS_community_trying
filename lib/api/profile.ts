@@ -96,8 +96,13 @@ export async function uploadAvatar(file: File): Promise<string> {
     headers: { 'Content-Type': 'application/octet-stream' },
     skipGlobalHandling: true,
   } as ApiRequestConfig);
-  const session = await fetchSession();
-  return session?.user?.avatar ?? '';
+  // 获取新头像 URL；网络错误时返回空（上传已成功，不因取 URL 失败让页面整体报错）
+  try {
+    const session = await fetchSession();
+    return session?.user?.avatar ?? '';
+  } catch {
+    return '';
+  }
 }
 
 // 更新个人简介: PATCH /api/accounts/{account_id}（bio 为 HTML）

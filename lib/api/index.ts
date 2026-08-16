@@ -4,7 +4,7 @@
 // ============================================================
 
 // 共享层：axios 实例 / 错误类型
-export { api } from './shared';
+export { api, clearLocalSession } from './shared';
 export {
   AuthenticationError,
   PermissionDeniedError,

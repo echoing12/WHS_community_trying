@@ -5,16 +5,17 @@ import { api, userFromAccount, type StorydenSession } from './shared';
 import type { AuthResponse, LoginInput, RegisterInput, SessionResponse } from '@/types';
 
 // 会话检测: GET /api/session（公开接口，未登录返回 200 且不含 account 字段）
+// 返回值语义（调用方必须区分）：
+//   - 返回 null → 确定未登录（200 且无 account）
+//   - 抛异常   → 网络/后端错误（请求没成功，未知会话状态）
+// 区分二者很重要：网络抖动时若把未知状态当「未登录」处理，
+// 已登录用户会被误登出（useAuth.refresh 依赖此语义保持登录状态）
 export async function fetchSession(): Promise<SessionResponse | null> {
-  try {
-    const { data } = await api.get<StorydenSession>(`/api/session`);
-    if (!data?.account) return null;
-    // 真实 API 返回字段：account.name / account.handle / account.bio（HTML）/
-    // account.joined，对应本站 user 的 name / avatar / bio
-    return { user: userFromAccount(data.account) };
-  } catch {
-    return null;
-  }
+  const { data } = await api.get<StorydenSession>(`/api/session`);
+  if (!data?.account) return null;
+  // 真实 API 返回字段：account.name / account.handle / account.bio（HTML）/
+  // account.joined，对应本站 user 的 name / avatar / bio
+  return { user: userFromAccount(data.account) };
 }
 
 // 退出登录: POST /api/auth/logout（服务端使会话失效，withCredentials 自动携带 storyden-session）

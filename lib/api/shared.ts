@@ -136,7 +136,8 @@ api.interceptors.response.use(
 
 // 清除本地会话状态：Cookie 会话模式下后端 Set-Cookie 下发的 storyden-session
 // 只能由服务端注销或过期失效，这里清理的是本地残留的旧版 cookie
-function clearLocalSession() {
+//（useAuth.logout 复用同一清理逻辑，避免两处清单不一致）
+export function clearLocalSession() {
   Cookies.remove('storyden_session');
   Cookies.remove('storyden-session');
   Cookies.remove('user_name');
