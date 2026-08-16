@@ -1,0 +1,121 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* ============ 手绘风主题变量（深色模式覆盖同组变量） ============ */
+  :root {
+    --color-mint: 240 247 244; /* #f0f7f4 薄荷白（页面背景） */
+    --color-ink: 45 90 74; /* #2d5a4a 墨绿（主色：文字 / 边框） */
+    --color-ink-solid: 45 90 74; /* 实心按钮 / 代码块背景（与 ink 同色） */
+    --color-on-solid: 255 255 255; /* 实心背景上的文字（白） */
+    --color-butter: 249 213 110; /* #f9d56e 淡黄（点缀：hover 背景 / 高亮） */
+    --color-surface: 255 255 255; /* 卡片 / 输入框背景（浅色模式为白） */
+  }
+
+  .dark {
+    --color-mint: 24 34 31; /* 深色页面背景 */
+    --color-ink: 214 228 220; /* 深色主色：浅色文字 */
+    --color-ink-solid: 31 56 47; /* 深色实心背景：深墨绿（保证浅色文字可读） */
+    --color-on-solid: 240 247 244; /* 实心背景上的文字（浅色） */
+    --color-butter: 156 116 46; /* 深色点缀：降低亮度保持可读 */
+    --color-surface: 37 52 47; /* 深色卡片背景 */
+  }
+
+  body {
+    @apply bg-mint font-sans text-ink antialiased;
+  }
+
+  /* 选中文字淡黄高亮，增加手绘质感 */
+  ::selection {
+    @apply bg-butter/70;
+  }
+}
+
+@layer components {
+  /* ============ 手绘风设计令牌 ============ */
+
+  /* 手写感标题：加粗 + 斜体（模拟手写），搭配 -2% 字距 */
+  .hand-title {
+    @apply font-bold italic tracking-tight;
+  }
+
+  /* 通用手绘卡片：圆角 + 虚线边框 + 硬阴影 */
+  .hand-card {
+    @apply rounded-2xl border-2 border-dashed border-ink/70 bg-surface shadow-hand;
+  }
+}
+
+/* ============ Markdown 简版渲染样式（react-markdown 输出） ============ */
+.markdown-body {
+  @apply text-[15px] leading-relaxed;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  @apply mt-5 mb-2 font-bold italic tracking-tight text-ink;
+}
+.markdown-body h1 {
+  @apply text-2xl;
+}
+.markdown-body h2 {
+  @apply text-xl;
+}
+.markdown-body h3 {
+  @apply text-lg;
+}
+.markdown-body p {
+  @apply my-2.5;
+}
+.markdown-body ul {
+  @apply my-2.5 list-disc pl-6;
+}
+.markdown-body ol {
+  @apply my-2.5 list-decimal pl-6;
+}
+.markdown-body li {
+  @apply my-1;
+}
+.markdown-body blockquote {
+  @apply my-3 rounded-r-2xl border-l-4 border-butter bg-surface/70 px-4 py-2 italic text-ink/80;
+}
+.markdown-body code {
+  @apply rounded-md bg-ink/10 px-1.5 py-0.5 font-mono text-[0.85em];
+}
+.markdown-body pre {
+  @apply my-3 overflow-x-auto rounded-2xl bg-ink-solid p-4;
+}
+.markdown-body pre code {
+  @apply bg-transparent p-0 text-white;
+}
+.markdown-body a {
+  @apply font-bold underline decoration-butter decoration-2 underline-offset-2;
+}
+.markdown-body hr {
+  @apply my-4 border-t-2 border-dashed border-ink/30;
+}
+.markdown-body table {
+  @apply my-3 w-full border-collapse;
+}
+.markdown-body th,
+.markdown-body td {
+  @apply border-2 border-dashed border-ink/30 px-3 py-1.5 text-left;
+}
+
+/* ============ 点赞弹跳动画（帖子详情 / 知识库详情） ============ */
+@keyframes like-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.4);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.animate-like-pop {
+  animation: like-pop 0.35s ease;
+}

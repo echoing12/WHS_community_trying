@@ -1,0 +1,78 @@
+# ============================================================
+#  Nginx 反向代理示例（生产环境兼容）
+#  前端 Next.js（npm run build 后由 PM2 运行，端口 3000）
+#  后端 StoryDen（Docker 容器，端口 8000）
+#  复制到 /etc/nginx/conf.d/ 下，按实际域名修改后 nginx -t && nginx -s reload
+# ============================================================
+
+# ⚠️ 登录/注册接口限流（登录/注册安全加固）——反暴力破解
+# 这一行必须放在 http 块（nginx.conf 顶层）里，server 块之外！
+# 登录: 每 IP 每分钟 10 次；burst 5 允许短时小突发；超限返回 429
+limit_req_zone $binary_remote_addr zone=auth_limit:10m rate=10r/m;
+
+server {
+    listen 80;
+    server_name community.example.com;   # 换成你的域名
+
+    # HTTP → HTTPS 跳转
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name community.example.com;   # 换成你的域名
+
+    # 允许上传大文件（图片 / 视频 / 文档附件）：0 = 不限制。
+    # Nginx 默认上限只有 1MB，不加会拦截视频等大文件上传
+    client_max_body_size 0;
+
+    # SSL 证书（可用 certbot 申请，或使用 Caddy 托管证书）
+    ssl_certificate     /etc/nginx/ssl/community.example.com.pem;
+    ssl_certificate_key /etc/nginx/ssl/community.example.com.key;
+
+    # ============ 安全响应头（登录/注册安全加固） ============
+    # always: 4xx/5xx 错误页也带上这些头
+    add_header X-Frame-Options "DENY" always;                    # 防点击劫持
+    add_header X-Content-Type-Options "nosniff" always;          # 防 MIME 嗅探
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;  # 防 URL 泄露
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;  # 强制 HTTPS
+
+    # 前端页面与静态资源 → Next.js（PM2 守护，端口 3000）
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Next.js HMR / 长连接（生产环境可省略）
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # ⚠️ 登录/注册接口（限流）：最长前缀匹配，优先于下面的 /api/ 生效
+    location /api/auth/ {
+        limit_req zone=auth_limit burst=5 nodelay;
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # 会话 Cookie 必须原样透传（storyden_session）
+        proxy_set_header Cookie $http_cookie;
+    }
+
+    # API 请求 → StoryDen（后端入口，端口按实际部署调整）
+    # ⚠️ 必须保留 /api/ 前缀：StoryDen 的 OpenAPI 路径以 /api/v1/ 开头
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # 会话 Cookie 必须原样透传（storyden_session）
+        proxy_set_header Cookie $http_cookie;
+    }
+}

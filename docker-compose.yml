@@ -1,0 +1,54 @@
+# ============================================================
+#  Storyden 社区 + Caddy 反向代理 —— Docker Compose 配置
+#  在项目目录(E:\WHS_community)下执行: docker compose up -d
+#  参考: https://www.storyden.org/docs/introduction/vps/docker-compose
+# ============================================================
+
+services:
+  storyden:
+    # Storyden 官方镜像(前端 + API 一体)
+    image: ghcr.io/southclaws/storyden:latest
+    restart: unless-stopped
+    # 容器内部监听 8000 端口。
+    # ⚠️ 必须映射到宿主机 8000: 前端开发环境（next dev）的 rewrites 直连
+    # http://localhost:8000 绕过 Caddy 的 HTTPS 跳转 —— Caddy 会 308 跳转
+    # 到 https 且不带 CORS 头, 导致浏览器跨源请求被拦截（详见 next.config.mjs 注释）
+    ports:
+      - "8000:8000"
+    environment:
+      # 站点对外地址(从 .env 文件读取)
+      # ⚠️ 部署到云服务器时, 只需修改 .env 里的这两个值
+      PUBLIC_WEB_ADDRESS: ${PUBLIC_WEB_ADDRESS}
+      PUBLIC_API_ADDRESS: ${PUBLIC_API_ADDRESS}
+      # 会话签名密钥(从 .env 文件读取)
+      # ⚠️ 官方默认值为全零, 不设置存在严重安全风险, 必须配置!
+      SESSION_KEY: ${SESSION_KEY}
+      # 数据库: 不设置则使用默认 SQLite(sqlite://data/data.db)
+      # 默认路径正好落在容器内 /storyden/data, 由下面的挂载持久化到 ./data
+      # 如需换 PostgreSQL 等, 再添加: DATABASE_URL: postgres://...
+    volumes:
+      # 【关键】数据目录(数据库 + 上传的图片)挂载到本机 ./data
+      # 备份时只需备份这个目录
+      - ./data:/storyden/data
+
+  caddy:
+    # Caddy 反向代理: 本地用 HTTP, 部署到服务器换成域名后自动启用 HTTPS
+    # ⚠️ 使用本地构建的自定义镜像(带 rate_limit 限流插件, 见 deploy/caddy/Dockerfile)。
+    #    首次/升级后执行: docker compose up -d --build caddy
+    build: ./deploy/caddy
+    image: whs-community-caddy:local
+    restart: unless-stopped
+    ports:
+      - "80:80"    # HTTP 入口
+      - "443:443"  # HTTPS 入口(部署到服务器换域名后, Caddy 自动申请/续期证书)
+    volumes:
+      # 反向代理规则(修改 Caddyfile 后执行 docker compose restart caddy 生效)
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Caddy 自身的证书与配置数据, 用命名卷持久化
+      - caddy_data:/data
+      - caddy_config:/config
+
+# Caddy 持久化卷(注意: 这是命名卷, 不是 ./data 目录)
+volumes:
+  caddy_data:
+  caddy_config:

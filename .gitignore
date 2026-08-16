@@ -1,0 +1,31 @@
+# 依赖与构建产物
+node_modules
+.next
+out
+
+# 日志
+npm-debug.log*
+*.log
+
+# 环境变量（含密钥，勿提交）
+.env
+.env*.local
+
+# 用户数据（数据库 + 上传的图片/附件，勿提交）
+data/
+
+# 本地生成的 Caddy 根证书（仅本机信任用，部署到服务器用 Let's Encrypt）
+caddy-local-ca.crt
+
+# Claude 本地配置（权限等，随机器）
+.claude/
+
+# TypeScript 增量编译缓存
+*.tsbuildinfo
+
+# 临时源码调试目录（本机分析 Storyden 源码用）
+.tmp-src/
+
+# 系统文件
+.DS_Store
+Thumbs.db

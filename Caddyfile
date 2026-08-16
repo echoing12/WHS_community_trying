@@ -1,0 +1,64 @@
+# ============================================================
+#  Caddy 反向代理配置: 把对外流量转发给 Storyden 容器
+#  修改后执行: docker compose restart caddy
+# ============================================================
+# ⚠️ rate_limit 指令依赖 mholt/caddy-ratelimit 插件, 标准 caddy:alpine 镜像没有!
+# 本项目使用 deploy/caddy/Dockerfile 构建的自定义镜像（docker-compose.yml 已配置）,
+# 首次启动/升级镜像: docker compose up -d --build caddy
+
+# 本地开发: localhost 属于本机地址, Caddy 以纯 HTTP 提供服务
+# 浏览器访问: http://localhost (会自动 308 跳转到 https://localhost)
+localhost {
+	# ============ 登录/注册接口限流（登录/注册安全加固） ============
+	# 反暴力破解: 按客户端 IP 滑动窗口限流, 超限返回 429
+	# （前端已把 429 映射为「尝试过于频繁」提示, 见 lib/api.ts RateLimitError）
+	# route 包裹保证求值顺序: 先限流、后反代
+	route {
+		# 登录: 每 IP 每分钟最多 10 次尝试
+		rate_limit /api/auth/password/signin {
+			zone signin {
+				key {http.request.remote.host}
+				window 1m
+				events 10
+			}
+		}
+		# 注册: 每 IP 每分钟最多 5 次尝试（防批量注册）
+		rate_limit /api/auth/password/signup {
+			zone signup {
+				key {http.request.remote.host}
+				window 1m
+				events 5
+			}
+		}
+		reverse_proxy storyden:8000
+	}
+}
+
+# ============================================================
+# ⚠️ 部署到云服务器时: 把上面的 localhost 换成你的真实域名, 例如:
+#
+#     community.example.com {
+#         # ⚠️ 换成域名时务必保留 route{ rate_limit ... } 限流配置, 只换块名
+#         # (建议再开启 HSTS: header Strict-Transport-Security "max-age=31536000")
+#         route {
+#             rate_limit /api/auth/password/signin {
+#                 zone signin {
+#                     key {http.request.remote.host}
+#                     window 1m
+#                     events 10
+#                 }
+#             }
+#             rate_limit /api/auth/password/signup {
+#                 zone signup {
+#                     key {http.request.remote.host}
+#                     window 1m
+#                     events 5
+#                 }
+#             }
+#             reverse_proxy storyden:8000
+#         }
+#     }
+#
+#   换成域名后, Caddy 会自动申请并自动续期 Let's Encrypt
+#   HTTPS 证书, 无需任何额外配置(前提: 服务器防火墙放行 80/443 端口)。
+# ============================================================
