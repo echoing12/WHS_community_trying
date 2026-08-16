@@ -1,23 +1,17 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookOpen, Hash, LinkIcon, MessageCircle } from 'lucide-react';
+import useSWR from 'swr';
 import { Badge } from '@/components/ui/badge';
 import { fetchTags } from '@/lib/api';
-import type { TagItem } from '@/types';
 
 export default function TagsPage() {
-  const [tags, setTags] = useState<TagItem[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchTags().then((data) => {
-      // 按使用频次从高到低排序
-      setTags([...data].sort((a, b) => b.count - a.count));
-      setLoading(false);
-    });
-  }, []);
+  // 标签列表：SWR 缓存（60 秒内不重复请求）
+  const { data: tagsData, isLoading } = useSWR('tags', fetchTags, { dedupingInterval: 60_000 });
+  // 按使用频次从高到低排序
+  const tags = [...(tagsData ?? [])].sort((a, b) => b.count - a.count);
+  const loading = isLoading && tags.length === 0;
 
   return (
     <div className="space-y-6">

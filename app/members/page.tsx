@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Calendar, ChevronLeft, ChevronRight, Heart, Search, UserX } from 'lucide-react';
+import useSWR from 'swr';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,12 +18,8 @@ const PAGE_SIZE = 20;
 
 export default function MembersPage() {
   const { isAuthenticated, user } = useAuth();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   // 管理员视角：被封禁（已踢出）的成员 handle 集合 —— 用于过滤显示
   // 公开列表接口（GET /api/profiles）不过滤被封禁账号也不带状态，
   // 只有管理员接口（GET /api/admin/accounts）返回 suspended，因此过滤仅管理员可见
@@ -38,23 +35,16 @@ export default function MembersPage() {
     setPage(1);
   };
 
-  const loadMembers = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      // 真实 API：GET /api/profiles?page=&page_size=（StoryDen 成员即 profile，需登录）
-      const data = await fetchMembers({ page, pageSize: PAGE_SIZE, search });
-      setMembers(data.members);
-      setTotal(data.total);
-    } catch {
-      // 未登录时 GET /api/profiles 返回 403（skipGlobalHandling 已跳过全局弹窗），内联提示登录
-      setMembers([]);
-      setTotal(0);
-      setError('查看成员列表需要登录，请先登录后重试');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search]);
+  // 成员列表：SWR 缓存（key 含分页与搜索条件，翻页/搜索自动重新验证）
+  const { data, error, isLoading, mutate } = useSWR(
+    ['members', page, search],
+    // 真实 API：GET /api/profiles?page=&page_size=（StoryDen 成员即 profile，需登录）
+    () => fetchMembers({ page, pageSize: PAGE_SIZE, search }),
+    { keepPreviousData: true }
+  );
+  const members = data?.members ?? [];
+  const total = data?.total ?? 0;
+  const loading = isLoading && members.length === 0;
 
   // 管理员额外加载全量账号封禁状态（仅管理员可访问该接口；失败时静默，
   // 不影响成员列表展示，只是本页不再做已踢出过滤）
@@ -70,11 +60,7 @@ export default function MembersPage() {
     return () => {
       cancelled = true;
     };
-  }, [isAdmin, page]);
-
-  useEffect(() => {
-    loadMembers();
-  }, [loadMembers]);
+  }, [isAdmin]);
 
   // 管理员视角：过滤掉已踢出的成员（“不显示该成员的信息”）
   const visibleMembers = isAdmin ? members.filter((m) => !bannedHandles.has(m.id)) : members;
@@ -94,9 +80,9 @@ export default function MembersPage() {
       await banAccount(member.id);
       // 本地记录到期时间，供自动解封调度（见 lib/kicks.ts）
       scheduleKick(member.id, member.name);
-      // 立即从本页列表中移除（管理员视角）
+      // 立即从本页列表中移除（管理员视角；visibleMembers 按 bannedHandles 过滤）
       setBannedHandles((prev) => new Set(prev).add(member.id));
-      setMembers((prev) => prev.filter((m) => m.id !== member.id));
+      void mutate(); // 同步 SWR 缓存（下次翻页/返回时不再显示该成员）
     } catch (err) {
       window.alert(err instanceof Error && err.message ? err.message : '操作失败，请重试');
     } finally {
@@ -145,7 +131,7 @@ export default function MembersPage() {
         <p className="py-16 text-center text-ink/50">加载中…</p>
       ) : error && members.length === 0 ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">{error}</p>
+          <p className="font-bold">查看成员列表需要登录，请先登录后重试</p>
           <Link href="/auth/login" className="mt-4 inline-block">
             <Button>去登录</Button>
           </Link>

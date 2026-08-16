@@ -1,38 +1,24 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookOpen, Plus } from 'lucide-react';
+import useSWR from 'swr';
 import LibraryTree from '@/components/LibraryTree';
 import LoginHint from '@/components/LoginHint';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { fetchLibraryTree } from '@/lib/api';
-import type { LibraryNode } from '@/types';
 
 export default function LibraryPage() {
   // 基于Storyden官方规格: 写操作（写知识库页面）按登录状态动态显示
   const { isAuthenticated, isLoading } = useAuth();
-  const [nodes, setNodes] = useState<LibraryNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const loadTree = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await fetchLibraryTree();
-      setNodes(data);
-    } catch {
-      setError('知识库加载失败，请检查网络后重试');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadTree();
-  }, [loadTree]);
+  // 目录树：SWR 缓存（60 秒内不重复请求，进入页面秒开）
+  const { data: nodes = [], error, isLoading: treeLoading, mutate } = useSWR(
+    'library-tree',
+    fetchLibraryTree,
+    { dedupingInterval: 60_000 }
+  );
+  const loading = treeLoading && nodes.length === 0;
 
   return (
     <div className="space-y-6">
@@ -64,8 +50,8 @@ export default function LibraryPage() {
           <p className="py-16 text-center text-ink/50">加载中…</p>
         ) : error ? (
           <div className="hand-card p-10 text-center">
-            <p className="font-bold">{error}</p>
-            <Button className="mt-4" onClick={loadTree}>
+            <p className="font-bold">知识库加载失败，请检查网络后重试</p>
+            <Button className="mt-4" onClick={() => mutate()}>
               重试
             </Button>
           </div>

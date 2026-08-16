@@ -1,8 +1,8 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, LinkIcon, Plus } from 'lucide-react';
+import useSWR from 'swr';
 import LoginHint from '@/components/LoginHint';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -10,31 +10,17 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { fetchLinks } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils';
-import type { LinkItem } from '@/types';
 
 export default function LinksPage() {
   // 基于Storyden官方规格: 提交链接属写操作，按登录状态动态显示
   const { isAuthenticated, isLoading } = useAuth();
-  const [links, setLinks] = useState<LinkItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const loadLinks = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = await fetchLinks();
-      setLinks(data);
-    } catch {
-      setError('链接加载失败，请检查网络后重试');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadLinks();
-  }, [loadLinks]);
+  // 链接列表：SWR 缓存（60 秒内不重复请求）
+  const { data: links = [], error, isLoading: linksLoading, mutate } = useSWR(
+    'links',
+    fetchLinks,
+    { dedupingInterval: 60_000 }
+  );
+  const loading = linksLoading && links.length === 0;
 
   return (
     <div className="space-y-6">
@@ -63,8 +49,8 @@ export default function LinksPage() {
         <p className="py-16 text-center text-ink/50">加载中…</p>
       ) : error ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">{error}</p>
-          <Button className="mt-4" onClick={loadLinks}>
+          <p className="font-bold">链接加载失败，请检查网络后重试</p>
+          <Button className="mt-4" onClick={() => mutate()}>
             重试
           </Button>
         </div>

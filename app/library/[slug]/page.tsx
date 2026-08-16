@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, BookOpen } from 'lucide-react';
+import useSWR from 'swr';
 import BookmarkMenu from '@/components/BookmarkMenu';
 import ContentActions from '@/components/ContentActions';
 import LoginHint from '@/components/LoginHint';
@@ -14,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 import { deleteLibraryPage, fetchLibraryPage } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils';
-import type { LibraryNode } from '@/types';
 
 export default function LibraryPageDetail() {
   const params = useParams();
@@ -27,30 +27,18 @@ export default function LibraryPageDetail() {
   // 基于Storyden官方规格: 收藏属写操作（COLLECTION_SUBMIT），按登录状态显示
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  const [page, setPage] = useState<LibraryNode | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  // 页面详情：SWR 缓存（从知识库树/其他页面进入时命中缓存秒开）
+  const { data: page, error, isLoading: pageLoading, mutate } = useSWR(
+    slug ? ['library-page', slug] : null,
+    () => fetchLibraryPage(slug as string),
+    { keepPreviousData: true }
+  );
   const [bookmarked, setBookmarked] = useState(false);
-
-  const loadPage = useCallback(async () => {
-    if (!slug) return;
-    setLoading(true);
-    setError('');
-    try {
-      const data = await fetchLibraryPage(slug);
-      setPage(data);
-      setBookmarked(!!data.is_collected);
-    } catch {
-      setPage(null);
-      setError('知识库页面加载失败，请检查网络后重试');
-    } finally {
-      setLoading(false);
-    }
-  }, [slug]);
-
   useEffect(() => {
-    loadPage();
-  }, [loadPage]);
+    setBookmarked(!!page?.is_collected);
+  }, [page]);
+
+  const loading = pageLoading && !page;
 
   if (loading) {
     return <p className="py-16 text-center text-ink/50">加载中…</p>;
@@ -59,9 +47,9 @@ export default function LibraryPageDetail() {
   if (!page) {
     return (
       <div className="hand-card p-10 text-center">
-        <p className="font-bold">{error || '知识库页面不存在或已被删除'}</p>
+        <p className="font-bold">{error ? '知识库页面加载失败，请检查网络后重试' : '知识库页面不存在或已被删除'}</p>
         <div className="mt-4 flex justify-center gap-3">
-          {error ? <Button onClick={loadPage}>重试</Button> : null}
+          {error ? <Button onClick={() => mutate()}>重试</Button> : null}
           <Link href="/library" className="inline-block">
             <Button variant="default">
               <ArrowLeft className="h-4 w-4" />

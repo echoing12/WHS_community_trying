@@ -1,60 +1,60 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { PenLine, Search } from 'lucide-react';
+import useSWR from 'swr';
+import useSWRInfinite from 'swr/infinite';
 import LoginHint from '@/components/LoginHint';
 import PostCard from '@/components/PostCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
-import { fetchPosts, fetchPostsByTag, fetchTags } from '@/lib/api';
+import { fetchPosts, fetchPostsByTag, fetchTags, type PostListResult } from '@/lib/api';
 import { cn } from '@/lib/utils';
-import type { PostListItem } from '@/types';
+
+// 每页帖子数（GET /api/threads 的 page_size）
+const PAGE_SIZE = 20;
+
+// 标签筛选时统一返回类型：该接口（GET /api/tags/{name}）无分页，一次返回全部
+const fetchPostsPage = (tag: string, page: number): Promise<PostListResult> =>
+  tag
+    ? fetchPostsByTag(tag).then((threads) => ({
+        threads,
+        total: threads.length,
+        totalPages: 1,
+        currentPage: 1,
+      }))
+    : fetchPosts({ page, pageSize: PAGE_SIZE });
 
 export default function HomePage() {
   // 基于Storyden官方规格: 写操作按钮（发布新帖）按登录状态动态显示
-  const { isAuthenticated, isLoading } = useAuth();
-  const [posts, setPosts] = useState<PostListItem[]>([]);
-  const [allTags, setAllTags] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [keyword, setKeyword] = useState('');
   const [activeTag, setActiveTag] = useState('');
 
-  // 标签筛选改为后端聚合（GET /api/tags/{name}），
-  // 因为真实 threads 响应中的 tags 字段可能为空，客户端过滤不可靠
-  const loadPosts = useCallback(async (tag: string) => {
-    setLoading(true);
-    setError('');
-    try {
-      const data = tag ? await fetchPostsByTag(tag) : await fetchPosts();
-      setPosts(data);
-    } catch {
-      setError('帖子加载失败，请检查网络后重试');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  // 帖子列表：SWR 无限加载（分页）。翻页保留旧数据（keepPreviousData），
+  // 标签筛选或回到「全部」时自动重新验证；从其他页面返回时走 SWR 缓存不重新拉取。
+  const { data, error, isLoading, size, setSize, mutate } = useSWRInfinite(
+    (index) => ['posts', activeTag, index + 1],
+    ([, tag, page]) => fetchPostsPage(tag, page),
+    { keepPreviousData: true }
+  );
+  const posts = (data ?? []).flatMap((d) => d.threads);
+  const lastPage = data?.[data.length - 1];
+  // 「加载更多」可用条件：非标签筛选（该接口无分页），且最后一页拉满了一页
+  const hasMore = !activeTag && !!lastPage && lastPage.threads.length >= PAGE_SIZE;
+  const loading = isLoading && posts.length === 0;
 
-  useEffect(() => {
-    loadPosts(activeTag);
-  }, [loadPosts, activeTag]);
-
-  // 真实标签列表（GET /api/tags），用于顶部筛选条
-  useEffect(() => {
-    fetchTags()
-      .then((tags) => setAllTags(tags.map((t) => t.name)))
-      .catch(() => setAllTags([]));
-  }, []);
+  // 标签列表：60 秒内不重复请求（GET /api/tags；取名称用于筛选条）
+  const { data: tagItems = [] } = useSWR('tags', fetchTags, { dedupingInterval: 60_000 });
+  const allTags = tagItems.map((t) => t.name);
 
   // 搜索仍为客户端按标题过滤（真实 API 的 ?q= 只匹配标题，行为一致）
   const filtered = useMemo(() => {
-    return posts.filter((post) => {
-      const matchKeyword =
-        !keyword.trim() || post.title.toLowerCase().includes(keyword.trim().toLowerCase());
-      return matchKeyword;
-    });
+    const kw = keyword.trim().toLowerCase();
+    if (!kw) return posts;
+    return posts.filter((post) => post.title.toLowerCase().includes(kw));
   }, [posts, keyword]);
 
   return (
@@ -83,7 +83,7 @@ export default function HomePage() {
             className="pl-11"
           />
         </div>
-        {!isLoading && (isAuthenticated ? (
+        {!authLoading && (isAuthenticated ? (
           // 基于Storyden官方规格: Member/Admin 显示发布入口
           <Link href="/create">
             <Button className="w-full sm:w-auto">
@@ -114,10 +114,10 @@ export default function HomePage() {
       {/* 帖子列表 */}
       {loading ? (
         <p className="py-16 text-center text-ink/50">加载中…</p>
-      ) : error ? (
+      ) : error && posts.length === 0 ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">{error}</p>
-          <Button className="mt-4" onClick={() => loadPosts(activeTag)}>
+          <p className="font-bold">帖子加载失败，请检查网络后重试</p>
+          <Button className="mt-4" onClick={() => mutate()}>
             重试
           </Button>
         </div>
@@ -125,7 +125,7 @@ export default function HomePage() {
         <div className="hand-card p-10 text-center">
           <p className="font-bold">没有找到相关帖子</p>
           <p className="mt-2 text-sm text-ink/60">换个关键词试试，或者来发布第一帖吧！</p>
-          {!isLoading && (isAuthenticated ? (
+          {!authLoading && (isAuthenticated ? (
             <Link href="/create" className="mt-4 inline-block">
               <Button>去发布</Button>
             </Link>
@@ -136,11 +136,26 @@ export default function HomePage() {
           ))}
         </div>
       ) : (
-        <div className="space-y-4">
-          {filtered.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
-        </div>
+        <>
+          <div className="space-y-4">
+            {filtered.map((post) => (
+              <PostCard key={post.id} post={post} />
+            ))}
+          </div>
+
+          {/* 加载更多（分页） */}
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="default"
+                disabled={isLoading}
+                onClick={() => setSize((s) => s + 1)}
+              >
+                {isLoading ? '加载中…' : '加载更多'}
+              </Button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

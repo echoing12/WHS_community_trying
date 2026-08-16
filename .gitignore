@@ -3,6 +3,9 @@ node_modules
 .next
 out
 
+# 本地 npm 缓存（npm install 权限不足时的临时缓存目录）
+.npm-cache/
+
 # 日志
 npm-debug.log*
 *.log
@@ -13,6 +16,9 @@ npm-debug.log*
 
 # 用户数据（数据库 + 上传的图片/附件，勿提交）
 data/
+
+# 备份输出目录（backup.bat / scripts/backup.sh 生成）
+backups/
 
 # 本地生成的 Caddy 根证书（仅本机信任用，部署到服务器用 Let's Encrypt）
 caddy-local-ca.crt

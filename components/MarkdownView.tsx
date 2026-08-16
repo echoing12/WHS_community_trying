@@ -50,7 +50,16 @@ export default function MarkdownView({ content }: { content: string }) {
                 />
               );
             }
-            return <img src={src} alt={alt} />;
+            return (
+              // 图片懒加载 + 宽度约束（手机/窄屏下大图不会撑破布局；与视频卡片样式一致）
+              <img
+                src={src}
+                alt={alt ?? ''}
+                loading="lazy"
+                decoding="async"
+                className="my-3 w-full max-w-2xl rounded-2xl border-2 border-dashed border-ink/30 bg-ink/5"
+              />
+            );
           },
           // 附件链接：Storyden 存储的附件文件名被 slugify 去掉了扩展名，
           // 对浏览器无法内联渲染的文档（Word / Excel / TXT）加 download 属性，

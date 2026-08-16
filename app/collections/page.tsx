@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Bookmark, PencilLine, Plus, Trash2 } from 'lucide-react';
+import useSWR from 'swr';
 import AuthGuard from '@/components/AuthGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,9 +19,12 @@ import type { CollectionItem } from '@/lib/api';
 
 // 收藏夹管理（真实 API：GET/POST/PATCH/DELETE /api/collections）
 export default function CollectionsPage() {
-  const [collections, setCollections] = useState<CollectionItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  // 收藏夹列表：SWR 缓存，增删改后 mutate() 刷新
+  const { data: collections = [], error, isLoading, mutate } = useSWR(
+    'my-collections',
+    fetchMyCollections
+  );
+  const loading = isLoading && collections.length === 0;
 
   // 新建表单
   const [showCreate, setShowCreate] = useState(false);
@@ -34,22 +38,6 @@ export default function CollectionsPage() {
   const [editDesc, setEditDesc] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      setCollections(await fetchMyCollections());
-    } catch {
-      setError('收藏夹加载失败，请检查网络后重试');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
   const handleCreate = async () => {
     if (!newName.trim()) return;
     setCreating(true);
@@ -58,7 +46,7 @@ export default function CollectionsPage() {
       setNewName('');
       setNewDesc('');
       setShowCreate(false);
-      await load();
+      await mutate();
     } catch {
       // 拦截器已提示
     } finally {
@@ -72,7 +60,7 @@ export default function CollectionsPage() {
     try {
       await updateCollection(editing.slug, { name: editName.trim(), description: editDesc.trim() });
       setEditing(null);
-      await load();
+      await mutate();
     } catch {
       // 拦截器已提示
     } finally {
@@ -84,7 +72,7 @@ export default function CollectionsPage() {
     if (!window.confirm(`确定删除收藏夹「${c.name}」吗？收藏夹本身会被删除，内容不受影响。`)) return;
     try {
       await deleteCollection(c.slug);
-      await load();
+      await mutate();
     } catch {
       // 拦截器已提示
     }
@@ -136,8 +124,8 @@ export default function CollectionsPage() {
           <p className="py-16 text-center text-ink/50">加载中…</p>
         ) : error ? (
           <div className="hand-card p-10 text-center">
-            <p className="font-bold">{error}</p>
-            <Button className="mt-4" onClick={load}>
+            <p className="font-bold">收藏夹加载失败，请检查网络后重试</p>
+            <Button className="mt-4" onClick={() => mutate()}>
               重试
             </Button>
           </div>

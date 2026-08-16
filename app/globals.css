@@ -30,6 +30,27 @@
   ::selection {
     @apply bg-butter/70;
   }
+
+  /* ============ 键盘可达性（a11y） ============ */
+  /* 全局焦点样式：键盘 Tab 导航时清晰可见（鼠标点击不显示，避免干扰） */
+  :focus-visible {
+    outline: 3px solid var(--color-butter);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  /* 用户开启「减少动态效果」时关闭点赞弹跳等动画 */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-like-pop {
+      animation: none;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
 }
 
 @layer components {

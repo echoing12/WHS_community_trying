@@ -21,8 +21,20 @@ app/                    # 页面（App Router）
 └── auth/page.tsx       # 登录 / 注册
 components/             # 可复用组件（ui/ 为手绘风基础件）
 lib/
-├── api.ts              # axios 实例（baseURL '/'）+ 全部接口函数 ← 阶段二改这里
-├── mock.ts             # 阶段一的 mock 数据（对接后删除）
+├── api/                # StoryDen 接口层（按域拆分，聚合入口 index.ts）
+│   ├── shared.ts       #   axios 实例 / 错误类型 / 字段适配转换器
+│   ├── auth.ts         #   认证（session / 登录 / 注册）
+│   ├── posts.ts        #   帖子 / 分类 / 评论 / 点赞
+│   ├── collections.ts  #   收藏夹
+│   ├── library.ts      #   知识库 / 附件上传
+│   ├── links.ts        #   链接分享
+│   ├── tags.ts         #   标签
+│   ├── notifications.ts#   通知
+│   ├── members.ts      #   成员 / 关注
+│   ├── admin.ts        #   角色 / 封禁 / 账号管理
+│   ├── profile.ts      #   个人中心
+│   └── index.ts        #   聚合导出（页面统一从这里 import）
+├── markdown.ts         # Markdown ↔ HTML 转换（纯函数，有单测 lib/markdown.test.ts）
 └── utils.ts            # cn / 时间格式化
 types/index.ts          # 与后端约定的数据结构
 next.config.mjs         # 开发环境把 /api/* 代理到本地后端（Next 14 不支持 .ts 配置，Next 15 可用）
@@ -145,21 +157,25 @@ docker compose ps       # 查看状态（两个容器都应 Up）
 
 **停止网站**：`docker compose stop`
 **查看日志**：`docker compose logs -f storyden`
-**升级 Storyden**：`docker compose up -d --build`
-（Caddy 是本地构建的自定义镜像，不能 `docker compose pull`；`--build` 会重新构建 Caddy 并拉取最新的 Storyden）
+**升级 Storyden**：改 [docker-compose.yml](docker-compose.yml) 里的版本号（已固定为 v1.26.15，勿用 latest）→ `docker compose up -d --build`
+（Caddy 是本地构建的自定义镜像，不能 `docker compose pull`；`--build` 会重新构建 Caddy 并按新版本号拉取 Storyden）
 **修改 Caddyfile 后**：`docker compose restart caddy`
 
 ### 备份（最重要！）
 
-所有数据都在 `./data` 目录（数据库 + 上传的图片），备份只需：
+所有数据都在 `./data` 目录（数据库 + 上传的图片），**一键脚本**：
 
-```bash
-docker compose stop storyden     # 先停止，保证数据库文件一致
-# 把整个 data 目录复制到安全的地方（U盘/网盘/另一台机器）
-docker compose start storyden    # 恢复运行
-```
+- **本机（Windows）**：双击 [backup.bat](backup.bat)，输出到 `backups/` 目录
+- **服务器（Linux）**：`./scripts/backup.sh`，自动保留最近 14 份备份；
+  配合 cron 定时（每天凌晨 3:30）：
+  ```bash
+  crontab -e   # 添加一行：
+  30 3 * * * /opt/whs_community/scripts/backup.sh >> /var/log/whs-backup.log 2>&1
+  ```
 
-同时把 `.env` 和 `Caddyfile` 一起备份。
+> 脚本会先停止 Storyden 容器保证数据库一致，备份完成后自动恢复。
+> ⚠️ 请把备份目录定期复制到**另一台设备**（U盘/网盘/另一台机器）——本机损坏时备份才有效。
+> 手动备份也可：`docker compose stop storyden` → 复制 `data/` + `.env` + `Caddyfile` → `docker compose start storyden`。
 
 ### 迁移到云服务器
 
@@ -185,9 +201,11 @@ docker compose start storyden    # 恢复运行
 PUBLIC_WEB_ADDRESS=https://community.example.com
 PUBLIC_API_ADDRESS=https://community.example.com
 
-# ⚠️ SESSION_KEY 保持和本地相同，不要重新生成!
+# ⚠️ 从原机器 .env 里复制真实的 SESSION_KEY，不要重新生成!
 # 改了它所有用户(包括你)会被强制登出
-SESSION_KEY=619d1e4fe835319b4fb6d05987310f47068b582fbc9f58b7a8ea17bce572cacf
+# 注意: 真实密钥只存在于 .env 里，切勿写进文档或提交到代码仓库
+# （泄露密钥 = 任何人可伪造登录会话，若曾泄露需立即重新生成）
+SESSION_KEY=<从原机器 .env 复制，勿公开>
 ```
 
 #### 4. 修改 Caddyfile
@@ -220,6 +238,23 @@ community.example.com {
 > ⚠️ `rate_limit` 指令依赖 mholt/caddy-ratelimit 插件，**标准 caddy:alpine 镜像没有**，
 > 本项目用 `deploy/caddy/Dockerfile` 构建带插件的自定义镜像（`docker compose up -d --build caddy`）。
 > 换域名后建议加一行 `header Strict-Transport-Security "max-age=31536000"` 强制 HTTPS。
+
+#### 会话 Cookie 与 CSRF 说明
+
+本站前端依赖 Cookie 会话（`storyden-session`），CSRF 防护依靠两层：
+1. **Cookie SameSite 属性**（Go/Storyden 默认 `SameSite=Lax`，浏览器不会在跨站请求中携带）
+2. **CSP `form-action 'self'`**（前端 next.config.mjs 已配置，表单只能提交本站）
+
+部署后建议验证一次会话 Cookie 的 SameSite 属性：
+
+```bash
+curl -v https://community.example.com/api/session 2>&1 | grep -i set-cookie
+# 期望输出含 SameSite=Lax（或 Lax 默认值），无 SameSite=None
+```
+
+若响应头出现 `SameSite=None`（未启用），说明后端版本行为有变：Storyden 的会话中间件
+（`app/transports/http/middleware/session_cookie`）按 Go 默认即 `SameSite=Lax`，
+出现 None 时请升级/确认 Storyden 版本后再上线，切勿依赖前端代码兜底（Cookie 由后端下发）。
 
 #### 5. 启动
 

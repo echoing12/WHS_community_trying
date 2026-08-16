@@ -1,44 +1,28 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { BookOpen, Hash, LinkIcon, MessageCircle, SearchX } from 'lucide-react';
+import useSWR from 'swr';
 import PostCard from '@/components/PostCard';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { fetchTagDetail } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils';
-import type { LibraryNode, LinkItem, TagDetail } from '@/types';
+import type { LibraryNode, LinkItem } from '@/types';
 
 export default function TagDetailPage() {
   const params = useParams();
   const name = Array.isArray(params.name) ? params.name[0] : params.name;
   const decoded = name ? decodeURIComponent(name) : '';
 
-  const [detail, setDetail] = useState<TagDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const loadDetail = useCallback(async () => {
-    if (!decoded) return;
-    setLoading(true);
-    setError('');
-    try {
-      const data = await fetchTagDetail(decoded);
-      setDetail(data);
-    } catch {
-      setDetail(null);
-      setError('标签内容加载失败，请检查网络后重试');
-    } finally {
-      setLoading(false);
-    }
-  }, [decoded]);
-
-  useEffect(() => {
-    loadDetail();
-  }, [loadDetail]);
+  // 标签详情：SWR 缓存（key 含标签名，切换标签自动重新验证）
+  const { data: detail, error, isLoading, mutate } = useSWR(
+    decoded ? ['tag-detail', decoded] : null,
+    () => fetchTagDetail(decoded as string)
+  );
+  const loading = isLoading && !detail;
 
   if (loading) {
     return <p className="py-16 text-center text-ink/50">加载中…</p>;
@@ -47,9 +31,9 @@ export default function TagDetailPage() {
   if (!detail) {
     return (
       <div className="hand-card p-10 text-center">
-        <p className="font-bold">{error || '标签不存在'}</p>
+        <p className="font-bold">{error ? '标签内容加载失败，请检查网络后重试' : '标签不存在'}</p>
         <div className="mt-4 flex justify-center gap-3">
-          {error ? <Button onClick={loadDetail}>重试</Button> : null}
+          {error ? <Button onClick={() => mutate()}>重试</Button> : null}
           <Link href="/tags" className="inline-block">
             <Button>返回标签列表</Button>
           </Link>

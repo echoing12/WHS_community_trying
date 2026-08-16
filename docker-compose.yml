@@ -7,7 +7,9 @@
 services:
   storyden:
     # Storyden 官方镜像(前端 + API 一体)
-    image: ghcr.io/southclaws/storyden:latest
+    # ⚠️ 固定版本号而非 latest：升级不可控（新版本可能引入破坏性变更/数据迁移）。
+    #    升级方式：改这里 → docker compose up -d --build（Caddy 是本地构建需 --build）
+    image: ghcr.io/southclaws/storyden:v1.26.15
     restart: unless-stopped
     # 容器内部监听 8000 端口。
     # ⚠️ 必须映射到宿主机 8000: 前端开发环境（next dev）的 rewrites 直连

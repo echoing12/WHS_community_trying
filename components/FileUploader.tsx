@@ -5,8 +5,16 @@ import { FileText, ImagePlus, Loader2, Video } from 'lucide-react';
 import { uploadAsset } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
-// 文档大小上限：20MB（超限提前拦截，避免长时间上传后失败）
-const MAX_DOC_SIZE = 20 * 1024 * 1024;
+// 前端上传限制（后端按魔数识别 MIME 无硬性限制，这里提前拦截避免无效的长耗时上传）
+const SIZE_LIMITS: Record<string, number> = {
+  image: 10 * 1024 * 1024, // 图片 ≤10MB
+  document: 20 * 1024 * 1024, // 文档 ≤20MB（原有限制）
+  video: 200 * 1024 * 1024, // 视频 ≤200MB
+};
+const SIZE_LIMIT_LABELS: Record<string, string> = { image: '10MB', document: '20MB', video: '200MB' };
+
+// 文档扩展名白名单（accept 属性可被绕过，这里做兜底校验）
+const DOC_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'];
 
 // 正文附件按钮：上传图片 / 文档 / 视频到 StoryDen assets
 // （POST /api/assets，按魔数识别 MIME，无白名单），成功后把 markdown 语法传给 onInsert
@@ -36,10 +44,33 @@ export default function FileUploader({
     const file = e.target.files?.[0];
     e.target.value = ''; // 允许重复选择同一文件
     if (!file) return;
-    // 文档大小上限提前拦截（图片/视频不限，后端亦无硬性限制）
-    if (kind === 'document' && file.size > MAX_DOC_SIZE) {
-      setError('文档文件超过 20MB，请压缩后重试');
+    // 大小上限提前拦截（按类型区分，避免长时间上传后失败）
+    if (file.size > SIZE_LIMITS[kind]) {
+      setError(
+        `文件超过 ${SIZE_LIMIT_LABELS[kind]}，请压缩后重试`
+      );
       return;
+    }
+    // 类型校验（accept 属性可被绕过，这里按 MIME / 扩展名兜底）
+    if (kind === 'image' && !file.type.startsWith('image/')) {
+      setError('请选择图片文件（JPG / PNG / GIF 等）');
+      return;
+    }
+    if (kind === 'video' && !file.type.startsWith('video/')) {
+      setError('请选择视频文件（MP4 / WebM 等浏览器可播放格式）');
+      return;
+    }
+    if (kind === 'document') {
+      const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+      const typeOk =
+        DOC_EXTENSIONS.includes(ext) ||
+        file.type === 'application/pdf' ||
+        file.type === 'text/plain' ||
+        file.type.startsWith('application/vnd');
+      if (!typeOk) {
+        setError('仅支持 PDF / Word / Excel / TXT 文档');
+        return;
+      }
     }
     setUploading(true);
     setError('');

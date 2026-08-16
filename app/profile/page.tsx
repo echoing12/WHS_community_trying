@@ -46,9 +46,19 @@ export default function ProfilePage() {
   }, [loadProfile]);
 
   // 头像上传：真实 API POST /api/accounts/self/avatar（application/octet-stream）
+  // 前端校验：仅图片类型、≤5MB（超限提前拦截）
+  const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('仅支持图片格式（JPG / PNG / GIF 等）');
+      return;
+    }
+    if (file.size > MAX_AVATAR_SIZE) {
+      setError('头像图片不能超过 5MB，请压缩后重试');
+      return;
+    }
     try {
       const avatarUrl = await uploadAvatar(file);
       setAvatar(avatarUrl);

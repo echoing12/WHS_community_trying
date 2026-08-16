@@ -1,9 +1,10 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Heart, Pin, Send } from 'lucide-react';
+import useSWR from 'swr';
 import BookmarkMenu from '@/components/BookmarkMenu';
 import Comment from '@/components/Comment';
 import ContentActions from '@/components/ContentActions';
@@ -16,7 +17,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
 import { createReply, deletePost, fetchPostDetail, togglePostLike } from '@/lib/api';
 import { cn, formatRelativeTime } from '@/lib/utils';
-import type { PostDetail } from '@/types';
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -26,9 +26,6 @@ export default function PostDetailPage() {
   // 基于Storyden官方规格: 评论 / 点赞 / 收藏等写操作按登录状态动态显示
   const { isAuthenticated, isLoading, user } = useAuth();
 
-  const [post, setPost] = useState<PostDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
   // 点赞 / 收藏状态从接口数据初始化，点赞动画用 pop 计数触发
   const [liked, setLiked] = useState(false);
   const [bookmarked, setBookmarked] = useState(false);
@@ -36,32 +33,22 @@ export default function PostDetailPage() {
   const [newComment, setNewComment] = useState('');
   const [sending, setSending] = useState(false);
 
-  const loadPost = useCallback(
-    async (showLoading = true) => {
-      if (!id) return;
-      if (showLoading) setLoading(true);
-      setError('');
-      try {
-        const data = await fetchPostDetail(id);
-        setPost(data);
-        setLiked(!!data.is_liked);
-        setBookmarked(!!data.is_collected);
-      } catch {
-        if (showLoading) setPost(null);
-        setError('帖子加载失败，请检查网络后重试');
-      } finally {
-        if (showLoading) setLoading(false);
-      }
-    },
-    [id]
+  // 帖子详情：SWR 缓存（从首页列表/其他页面进入时命中缓存秒开），
+  // 评论 / 嵌套回复提交后 mutate() 静默刷新（评论列表以服务端为准，不闪加载态）
+  const { data: post, error, isLoading: detailLoading, mutate } = useSWR(
+    id ? ['post', id] : null,
+    () => fetchPostDetail(id as string),
+    { keepPreviousData: true }
   );
 
+  // 点赞 / 收藏状态在数据刷新后同步（SWR 重新验证返回的 is_liked/is_collected 为准）
   useEffect(() => {
-    loadPost();
-  }, [loadPost]);
+    setLiked(!!post?.is_liked);
+    setBookmarked(!!post?.is_collected);
+  }, [post]);
 
   // ============ 点赞 / 收藏切换（真实 API：PUT/DELETE /api/likes/posts/[id]、
-  // /api/collections/{mark}/posts/[id]；乐观更新，失败回滚） ============
+  // /api/collections/{mark}/posts/{id}；乐观更新，失败回滚） ============
   const toggleLike = async () => {
     if (!isAuthenticated || !post) return;
     const next = !liked;
@@ -77,14 +64,14 @@ export default function PostDetailPage() {
 
   // 收藏改由 BookmarkMenu 管理（多收藏夹选择器，真实 API PUT/DELETE /api/collections/{mark}/posts/{id}）
 
-  // 发表评论 / 嵌套回复：POST /api/threads/[id]/replies，成功后静默刷新（评论列表以服务端为准）
+  // 发表评论 / 嵌套回复：POST /api/threads/[id]/replies，成功后 mutate 静默刷新（评论列表以服务端为准）
   const submitComment = async () => {
     if (!isAuthenticated || !newComment.trim() || !post) return;
     setSending(true);
     try {
       await createReply(post.id, newComment.trim());
       setNewComment('');
-      await loadPost(false);
+      await mutate();
     } catch {
       // 401/403/400 已由拦截器统一提示
     } finally {
@@ -92,25 +79,22 @@ export default function PostDetailPage() {
     }
   };
 
-  const handleReply = useCallback(
-    async (threadId: string, content: string, replyTo?: string) => {
-      await createReply(threadId, content, replyTo);
-      await loadPost(false);
-    },
-    [loadPost]
-  );
+  const handleReply = async (threadId: string, content: string, replyTo?: string) => {
+    await createReply(threadId, content, replyTo);
+    await mutate();
+  };
 
-  if (loading) {
+  if (detailLoading && !post) {
     return <p className="py-16 text-center text-ink/50">加载中…</p>;
   }
 
   if (!post) {
     return (
       <div className="hand-card p-10 text-center">
-        <p className="font-bold">{error || '帖子不存在或已被删除'}</p>
+        <p className="font-bold">{error ? '帖子加载失败，请检查网络后重试' : '帖子不存在或已被删除'}</p>
         <div className="mt-4 flex justify-center gap-3">
           {error ? (
-            <Button onClick={() => loadPost()}>重试</Button>
+            <Button onClick={() => mutate()}>重试</Button>
           ) : null}
           <Link href="/" className="inline-block">
             <Button variant="default">

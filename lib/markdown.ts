@@ -44,6 +44,20 @@ function stripUrlBrackets(url: string): string {
   return url;
 }
 
+// ============ URL 协议白名单（XSS 防御） ============
+// 允许：http/https/mailto、相对路径（/ 开头）、锚点（#开头）、无协议的裸文本；
+// 拒绝：javascript: / data: / vbscript: / file: 等危险协议。
+// 防御纵深：即使后端 sanitize 放行，前端也不会生成可执行链接/图片。
+function isSafeUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  if (/^(https?:|mailto:)/i.test(trimmed)) return true;
+  if (/^[/#]/.test(trimmed)) return true;
+  // 带其他协议头（javascript:、data:、vbscript:、file: 等）一律拒绝；
+  // 无协议冒号的裸 URL 视为相对路径放行
+  return !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed);
+}
+
 // 内联语法：`code`、![alt](url)、[text](url)、**bold**、*italic*
 // 实现要点：生成的 HTML 标签先用占位符保护，最后对剩余纯文本统一转义，
 // 再还原占位符 —— 避免转义把生成好的标签也转掉
@@ -63,13 +77,19 @@ function renderInline(text: string): string {
   };
 
   // 3. 图片 ![...](...)（URL 兼容 <url> 尖括号写法，剥掉括号再转义）
+  //    危险协议（javascript:/data: 等）的图片直接丢弃，只保留 alt 文本
   text = text.replace(/!\[([^\]]*)\]\(((?:<[^>]*>|[^)\s]+))(?:\s+"[^"]*")?\)/g, (_m, alt: string, src: string) => {
-    return protect(`<img src="${escapeHtml(stripUrlBrackets(src))}" alt="${escapeHtml(alt)}" />`);
+    const url = stripUrlBrackets(src);
+    if (!isSafeUrl(url)) return escapeHtml(alt);
+    return protect(`<img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}" />`);
   });
 
   // 4. 链接 [text](url)（text 部分递归渲染加粗/斜体；URL 兼容 <url> 尖括号写法）
+  //    危险协议（javascript:/data: 等）降级为纯文本，不生成链接
   text = text.replace(/\[([^\]]+)\]\(((?:<[^>]*>|[^)\s]+))(?:\s+"[^"]*")?\)/g, (_m, label: string, href: string) => {
-    return protect(`<a href="${escapeHtml(stripUrlBrackets(href))}">${renderInline(label)}</a>`);
+    const url = stripUrlBrackets(href);
+    if (!isSafeUrl(url)) return renderInline(label);
+    return protect(`<a href="${escapeHtml(url)}">${renderInline(label)}</a>`);
   });
 
   // 5. 加粗 / 斜体（只匹配成对出现的）
@@ -282,7 +302,14 @@ function nodeToMarkdown(node: HtmlNode, depth = 0): string {
       const walkText = (n: HtmlNode): string =>
         n.name === '#text' ? (n.text ?? '') : n.children.map(walkText).join('');
       const code = node.children.map(walkText).join('').trim();
-      return `\n\n\`\`\`\n${code}\n\`\`\`\n\n`;
+      // 语言信息在 code 子节点的 class="language-xxx" 上（markdownToHtml 生成时挂在 code），
+      // 提取出来还原 ```lang 语法（pre 自身的 class 兜底）
+      const codeNode = node.children.find((c) => c.name === 'code');
+      const langMatch = /(?:^|\s)language-([\w+-]+)/.exec(
+        codeNode?.attrs?.class ?? node.attrs.class ?? ''
+      );
+      const lang = langMatch ? langMatch[1] : '';
+      return `\n\n\`\`\`${lang}\n${code}\n\`\`\`\n\n`;
     }
     case 'a':
       return `[${node.children.map((c) => nodeToMarkdown(c, depth)).join('')}](${node.attrs.href ?? ''})`;
@@ -310,8 +337,11 @@ function nodeToMarkdown(node: HtmlNode, depth = 0): string {
         .join('\n')}\n\n`;
     }
     case 'table': {
-      const rows = node.children
-        .filter((c) => c.name === 'tr')
+      // thead/tbody 会包住 tr（markdownToHtml 生成的表格带 thead/tbody），
+      // 直接子节点过滤找不到行 —— 递归收集所有后代 tr
+      const collectTrs = (n: HtmlNode): HtmlNode[] =>
+        n.name === 'tr' ? [n] : n.children.flatMap(collectTrs);
+      const rows = collectTrs(node)
         .map((tr) =>
           tr.children
             .filter((c) => c.name === 'th' || c.name === 'td')
