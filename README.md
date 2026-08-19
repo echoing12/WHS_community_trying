@@ -90,54 +90,104 @@ docker compose up -d
 
 ---
 
-## 四、部署（阶段三：Nginx + PM2）
+## 四、生产部署（推荐：Docker 全家桶，从零开始）
 
-### 1. 本地构建
+用 git 克隆仓库后，一条命令拉起 **前端 + Storyden + Caddy**：Caddy 作为 80 端口统一入口，
+前端页面与 `/api/*` 同源反代，无 CORS 问题。**全新部署推荐此方式。**
+
+### 1. 准备服务器
+
+- 云服务器（2核2G 即可），安装 Docker 和 Docker Compose 插件
+- 安全组/防火墙放行：`80`、`443`、`22`，其余不用开
+- （可选）域名解析：把域名 A 记录指向服务器公网 IP
+
+### 2. 拉取代码
 
 ```bash
-npm run build     # 生成生产包
-npm start         # 本机预览生产模式（默认 3000 端口）
+git clone https://github.com/echoing12/WHS_community_trying.git
+cd WHS_community_trying
 ```
 
-### 2. 服务器安装
+### 3. 配置 .env
 
 ```bash
-npm install -g pm2          # 安装进程管理器
-npm run build               # 在项目目录构建
-pm2 start "npm run start" --name whs-community   # 启动并守护
-pm2 save && pm2 startup     # 开机自启（按提示执行输出的命令）
+cp .env.example .env
+nano .env
 ```
 
-> 前端只做页面渲染，**不需要把 Node 服务暴露到公网**，
-> 由 Nginx 统一入口反向代理（后端 StoryDen 也用同一台 Nginx 或 Caddy 代理）。
+填写四项（`PUBLIC_WEB_ADDRESS` / `PUBLIC_API_ADDRESS` / `SESSION_KEY` / `SITE_ADDRESS`）：
 
-### 3. Nginx 反向代理示例
+```ini
+# IP 部署（无域名）：
+PUBLIC_WEB_ADDRESS=http://你的服务器IP
+PUBLIC_API_ADDRESS=http://你的服务器IP
+SITE_ADDRESS=http://你的服务器IP      # ⚠️ 必须带 http:// 前缀，否则 Caddy 会 308 跳转 HTTPS 导致无法访问
+SESSION_KEY=<用 openssl rand -hex 32 生成>
 
-前端请求始终使用相对路径（如 `/api/posts`），生产环境无需修改任何代码：
-
-```nginx
-server {
-    listen 80;
-    server_name community.example.com;   # 换成你的域名
-
-    # 前端页面与静态资源 → Next.js
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    }
-
-    # API 请求 → StoryDen（后端入口，端口按实际部署调整）
-    location /api/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-    }
-}
+# 域名部署（Caddy 自动申请/续期 HTTPS 证书）：
+# PUBLIC_WEB_ADDRESS=https://你的域名
+# PUBLIC_API_ADDRESS=https://你的域名
+# SITE_ADDRESS=https://你的域名
 ```
 
-配置完成后 `nginx -t && nginx -s reload` 生效。
+> ⚠️ **不要设置任何 `NEXT_PUBLIC_*` 变量！** 前端使用相对路径 `/api/*`，
+> 设置 `NEXT_PUBLIC_API_URL` 会在构建时把绝对地址内联进 JS，
+> 导致浏览器跨域请求被 CORS 拦截（表现为「加载失败」）。
+
+### 4. 准备数据目录
+
+Storyden 容器以 uid 1000 运行，首次部署必须先建目录并授权（否则容器写库失败/闪退）：
+
+```bash
+mkdir -p data
+sudo chown -R 1000:1000 data
+```
+
+> 迁移旧数据：把原机器的 `data/` 目录整个上传覆盖（如 `scp -r data/ user@IP:~/WHS_community_trying/`），
+> 并保持 `SESSION_KEY` 与原机器一致（否则所有用户被强制登出）。
+
+### 5. 启动
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+首次构建约 3~5 分钟（前端镜像 + 带限流插件的 Caddy 镜像）。
+
+### 6. 验证
+
+```bash
+curl -s -o /dev/null -w "页面: %{http_code}\n" http://你的IP/
+curl -s -o /dev/null -w "API:  %{http_code}\n" http://你的IP/api/threads
+```
+
+浏览器访问 **http://你的IP**（不带端口）。登录注册也一并测试。
+
+### 7. 日常维护
+
+```bash
+docker compose -f docker-compose.prod.yml ps                  # 查看状态
+docker compose -f docker-compose.prod.yml logs -f storyden    # 查看日志
+./scripts/backup.sh                                           # 一键备份（自动识别 prod compose，配合 cron 每天凌晨 3:30）
+```
+
+升级 Storyden：改 `docker-compose.prod.yml` 里的版本号（已固定 1.26.15）→
+`docker compose -f docker-compose.prod.yml up -d --build`。
+修改 `Caddyfile.production` 后：`docker compose -f docker-compose.prod.yml restart caddy`。
+
+---
+
+### 备选方案：Nginx + PM2（传统方式，可跳过）
+
+不想用 Docker 跑前端时，可用 PM2 守护 Next.js、Nginx 统一入口，
+完整配置见 [deploy/nginx.conf.example](deploy/nginx.conf.example)（含登录限流与 /api 反代示例）：
+
+```bash
+npm install -g pm2
+npm run build
+pm2 start "npm run start" --name whs-community
+pm2 save && pm2 startup
+```
 
 ---
 
@@ -179,65 +229,12 @@ docker compose ps       # 查看状态（两个容器都应 Up）
 
 ### 迁移到云服务器
 
-#### 1. 准备服务器
+新服务器部署直接走**第四节（Docker 全家桶）**的流程；数据迁移只需两步：
 
-- 买一台云服务器（阿里云/腾讯云轻量即可，2核2G够用）
-- 安装 Docker 和 Docker Compose 插件
-- 安全组/防火墙放行端口：`80`、`443`、`22`，其余不用开
-- 域名解析：把你的域名（或子域名）添加 **A 记录指向服务器公网 IP**
-
-#### 2. 上传文件
-
-把本机项目目录里的 **docker-compose.yml、Caddyfile、.env、data/、deploy/** 传到服务器
-（用 `tar` 打包后 scp，或 WinSCP 等工具，传到服务器任意目录，如 `/opt/whs_community`）
-—— `deploy/caddy/Dockerfile` 是带限流插件的 Caddy 镜像构建文件，**必须一起传**。
+1. 把原机器的 `data/` 目录整个上传覆盖到服务器项目目录（如 `scp -r data/ user@IP:~/WHS_community_trying/`）
+2. 服务器 `.env` 里的 `SESSION_KEY` **沿用原机器的值**（不要重新生成，否则所有用户被强制登出）
 
 > `caddy-local-ca.crt` 是本地证书信任用的，**不用传到服务器**。
-
-#### 3. 修改 .env（关键！）
-
-```ini
-# 改成你的域名，协议必须与访问一致(https)
-PUBLIC_WEB_ADDRESS=https://community.example.com
-PUBLIC_API_ADDRESS=https://community.example.com
-
-# ⚠️ 从原机器 .env 里复制真实的 SESSION_KEY，不要重新生成!
-# 改了它所有用户(包括你)会被强制登出
-# 注意: 真实密钥只存在于 .env 里，切勿写进文档或提交到代码仓库
-# （泄露密钥 = 任何人可伪造登录会话，若曾泄露需立即重新生成）
-SESSION_KEY=<从原机器 .env 复制，勿公开>
-```
-
-#### 4. 修改 Caddyfile
-
-把 `localhost` 块换成你的域名（替换后 Caddy 会自动申请/续期 Let's Encrypt 证书）。
-**⚠️ 必须保留登录/注册限流配置**（反暴力破解）：域名块里也要带上 `route { rate_limit ... }`：
-
-```caddyfile
-community.example.com {
-	route {
-		rate_limit /api/auth/password/signin {
-			zone signin {
-				key {http.request.remote.host}
-				window 1m
-				events 10
-			}
-		}
-		rate_limit /api/auth/password/signup {
-			zone signup {
-				key {http.request.remote.host}
-				window 1m
-				events 5
-			}
-		}
-		reverse_proxy storyden:8000
-	}
-}
-```
-
-> ⚠️ `rate_limit` 指令依赖 mholt/caddy-ratelimit 插件，**标准 caddy:alpine 镜像没有**，
-> 本项目用 `deploy/caddy/Dockerfile` 构建带插件的自定义镜像（`docker compose up -d --build caddy`）。
-> 换域名后建议加一行 `header Strict-Transport-Security "max-age=31536000"` 强制 HTTPS。
 
 #### 会话 Cookie 与 CSRF 说明
 

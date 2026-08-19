@@ -1,0 +1,8 @@
+# 统一文本行尾：提交进仓库的一律 LF（Linux 服务器克隆无 CRLF 问题）
+* text=auto
+
+# 脚本强制 LF（CRLF 会导致 Linux 上 bash 报 "bad interpreter"）
+*.sh text eol=lf
+
+# Windows 批处理保持 CRLF（cmd 兼容性最稳）
+*.bat text eol=crlf

@@ -1,17 +1,21 @@
 # ============================================================
 #  生产环境 Compose（Docker 全家桶：前端 + Storyden + Caddy 统一入口）
 #
-#  用法（服务器上）:
-#    1. 配置 .env: PUBLIC_WEB_ADDRESS / PUBLIC_API_ADDRESS / SESSION_KEY / SITE_ADDRESS
-#    2. docker compose -f docker-compose.prod.yml up -d --build
-#    3. 浏览器访问 http://<SITE_ADDRESS>  （Caddy 统一入口, 无需暴露 3000/8000 端口）
+#  首次部署（从 git clone 开始）:
+#    1. cp .env.example .env  并填写 4 项:
+#       PUBLIC_WEB_ADDRESS / PUBLIC_API_ADDRESS / SESSION_KEY / SITE_ADDRESS
+#       （IP 用 http://IP，域名用 https://域名；勿设置任何 NEXT_PUBLIC_*）
+#    2. mkdir -p data && sudo chown -R 1000:1000 data
+#       ⚠️ storyden 以 uid 1000 运行，data 目录属主不对会写库失败/闪退
+#    3. docker compose -f docker-compose.prod.yml up -d --build
+#    4. 浏览器访问 http://<SITE_ADDRESS>（无需暴露 3000/8000 端口）
 #
 #  ⚠️ 与开发版 docker-compose.yml 的区别:
 #    - 多了 frontend 服务（用根目录 Dockerfile 构建 Next.js 生产镜像）
 #    - Storyden 不再映射宿主机端口（Caddy 走 compose 内部网络访问）
 #    - Caddy 挂载 Caddyfile.production（前端 + API 统一反代, 同源无 CORS 问题）
 #    - 前端不要设置 NEXT_PUBLIC_API_URL! 它会在构建时把绝对地址内联进代码,
-#      导致浏览器跨域请求被 CORS 拦截（正是之前「加载失败」的根源）
+#      导致浏览器跨域请求被 CORS 拦截（正是「加载失败」的根源）
 # ============================================================
 
 services:
@@ -28,13 +32,17 @@ services:
   storyden:
     # Storyden 官方镜像（前端 + API 一体）, 固定版本号
     image: ghcr.io/southclaws/storyden:1.26.15
-    user: "1000:1000"   # 与宿主机 ./data 属主一致（服务器上如遇写权限问题再调整）
+    # 容器内以 uid 1000 运行；首次部署前必须先执行：
+    #   mkdir -p data && sudo chown -R 1000:1000 data
+    # （否则容器写不了 ./data 下的数据库，会启动失败/闪退）
+    user: "1000:1000"
     restart: unless-stopped
     # 生产环境不映射宿主机端口; 如需本机调试 API 可临时改为 "127.0.0.1:8001:8000"
     environment:
-      PUBLIC_WEB_ADDRESS: ${PUBLIC_WEB_ADDRESS}
-      PUBLIC_API_ADDRESS: ${PUBLIC_API_ADDRESS}
-      SESSION_KEY: ${SESSION_KEY}
+      # :? 强制必填 —— .env 里没填会直接报错，避免带空值启动
+      PUBLIC_WEB_ADDRESS: ${PUBLIC_WEB_ADDRESS:?请在 .env 中填写 PUBLIC_WEB_ADDRESS}
+      PUBLIC_API_ADDRESS: ${PUBLIC_API_ADDRESS:?请在 .env 中填写 PUBLIC_API_ADDRESS}
+      SESSION_KEY: ${SESSION_KEY:?请在 .env 中填写 SESSION_KEY（openssl rand -hex 32）}
     volumes:
       # 数据目录（数据库 + 上传的图片）持久化到本机 ./data
       - ./data:/storyden/data
@@ -49,7 +57,8 @@ services:
       - "443:443"   # HTTPS 入口（SITE_ADDRESS 为域名时 Caddy 自动申请证书）
     environment:
       # Caddyfile.production 里的 {$SITE_ADDRESS} 占位符取自这个变量
-      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+      # :? 强制必填 —— IP 用 http://IP，域名用 https://域名
+      SITE_ADDRESS: ${SITE_ADDRESS:?请在 .env 中填写 SITE_ADDRESS（IP 或域名，必须带协议前缀）}
     volumes:
       - ./Caddyfile.production:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
