@@ -117,6 +117,8 @@ fi
 echo "==> compose 无 NEXT_PUBLIC 残留 ✓"
 
 # ---------- 5. 重建 / 重启 ----------
+# 确保 .env* 不进入构建上下文（Next 构建时会读取并内联 NEXT_PUBLIC_*）
+grep -q '^\.env' .dockerignore 2>/dev/null || printf '\n# 防止 .env 被 Next 构建时内联\n.env*\n' >> .dockerignore
 echo "==> [5/6] 重建前端镜像（必须：变量是构建时内联的）"
 docker compose up -d --build frontend
 
