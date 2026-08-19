@@ -3,7 +3,8 @@
 #  WHS 社区云服务器一键修复脚本（统一入口方案）
 #
 #  用法:  bash deploy-fix.sh [站点地址]
-#    站点地址默认 42.193.101.174，可传域名或其它 IP 覆盖
+#    默认 http://42.193.101.174（IP 必须带 http:// 前缀，否则 Caddy 会 308 跳转 HTTPS）
+#    域名示例: bash deploy-fix.sh https://community.example.com （自动申请证书）
 #
 #  作用（全自动）:
 #    1. 备份 Caddyfile / docker-compose.yml / .env
@@ -17,10 +18,10 @@
 # ============================================================
 set -euo pipefail
 
-SITE_IP="${1:-42.193.101.174}"
+SITE_ADDR="${1:-http://42.193.101.174}"
 cd "$(dirname "$0")"
 
-echo "==> [0/6] 目标站点: http://$SITE_IP"
+echo "==> [0/6] 目标站点: $SITE_ADDR"
 
 # ---------- 1. 备份 ----------
 BK="backups/deploy-fix-$(date +%Y%m%d-%H%M%S)"
@@ -39,8 +40,9 @@ fi
 echo "==> [2/6] Dockerfile 无 NEXT_PUBLIC 残留 ✓"
 
 # ---------- 3. 重写 Caddyfile（统一入口） ----------
+# 站点地址带协议前缀: http://IP 走纯 HTTP; https://域名 自动申请证书
 cat > Caddyfile <<EOF
-$SITE_IP {
+$SITE_ADDR {
 	route {
 		# 登录/注册限流（保留，防暴力破解）
 		rate_limit /api/auth/password/signin {
@@ -64,14 +66,14 @@ $SITE_IP {
 	}
 }
 EOF
-echo "==> [3/6] Caddyfile 已更新（站点: $SITE_IP）"
+echo "==> [3/6] Caddyfile 已更新（站点: $SITE_ADDR）"
 
 # ---------- 4. 修改 docker-compose.yml 与 .env ----------
 command -v python3 >/dev/null 2>&1 || {
   echo "缺少 python3，请先执行: sudo apt-get update && sudo apt-get install -y python3"
   exit 1
 }
-python3 - "$SITE_IP" <<'PY'
+python3 - "$SITE_ADDR" <<'PY'
 import re, sys
 site = sys.argv[1]
 
@@ -98,10 +100,10 @@ def set_line(text, key, val):
     if pat.search(text):
         return pat.sub(key + '=' + val, text)
     return text.rstrip('\n') + '\n' + key + '=' + val + '\n'
-s = set_line(s, 'PUBLIC_WEB_ADDRESS', 'http://' + site)
-s = set_line(s, 'PUBLIC_API_ADDRESS', 'http://' + site)
+s = set_line(s, 'PUBLIC_WEB_ADDRESS', site)
+s = set_line(s, 'PUBLIC_API_ADDRESS', site)
 open(p, 'w', encoding='utf-8', newline='\n').write(s)
-print('.env: PUBLIC_WEB_ADDRESS / PUBLIC_API_ADDRESS 已指向 http://' + site)
+print('.env: PUBLIC_WEB_ADDRESS / PUBLIC_API_ADDRESS 已指向 ' + site)
 PY
 echo "==> [4/6] docker-compose.yml 与 .env 已修改"
 
@@ -127,13 +129,13 @@ docker compose restart caddy
 
 # ---------- 6. 验证 ----------
 echo
-echo "==> [6/6] 验证（走 80 端口，同源）"
+echo "==> [6/6] 验证（同源，无 CORS）"
 sleep 3
-curl -s -o /dev/null -w "页面  : %{http_code}\n" "http://$SITE_IP/" || true
-curl -s -o /dev/null -w "API   : %{http_code}\n" "http://$SITE_IP/api/threads" || true
+curl -s -o /dev/null -w "页面  : %{http_code}\n" "$SITE_ADDR/" || true
+curl -s -o /dev/null -w "API   : %{http_code}\n" "$SITE_ADDR/api/threads" || true
 echo "--- API 返回内容（前 200 字符）---"
-curl -s "http://$SITE_IP/api/threads" | head -c 200 || true
+curl -s "$SITE_ADDR/api/threads" | head -c 200 || true
 echo
 echo
-echo "完成！浏览器访问 http://$SITE_IP （不带端口）"
+echo "完成！浏览器访问 $SITE_ADDR （不带端口）"
 echo "提醒: 请到云控制台安全组放行 80，并关闭 8001 / 3000 的公网访问。"

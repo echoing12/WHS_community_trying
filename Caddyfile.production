@@ -2,10 +2,11 @@
 #  生产环境 Caddy 配置: 统一入口（前端页面 + API 同源反代）
 #
 #  用法: 由 docker-compose.prod.yml 挂载到 /etc/caddy/Caddyfile
-#        SITE_ADDRESS 从 .env 读取（IP 或域名）, 默认 localhost
+#        SITE_ADDRESS 从 .env 读取（必须带协议前缀）:
+#          - IP:   http://42.193.101.174        （纯 HTTP, 不会 308 跳转）
+#          - 域名: https://community.example.com （自动申请/续期 HTTPS 证书）
+#  默认 localhost（本地开发用, Caddy 本地 CA 自签证书）
 #
-#  - 站点地址是 IP 时: Caddy 以纯 HTTP 提供 80 端口服务
-#  - 站点地址是域名时: Caddy 自动申请/续期 Let's Encrypt HTTPS 证书
 #  ⚠️ rate_limit 依赖 mholt/caddy-ratelimit 插件（deploy/caddy/Dockerfile 已构建）
 # ============================================================
 {$SITE_ADDRESS:localhost} {
