@@ -1,0 +1,60 @@
+# ============================================================
+#  生产环境 Compose（Docker 全家桶：前端 + Storyden + Caddy 统一入口）
+#
+#  用法（服务器上）:
+#    1. 配置 .env: PUBLIC_WEB_ADDRESS / PUBLIC_API_ADDRESS / SESSION_KEY / SITE_ADDRESS
+#    2. docker compose -f docker-compose.prod.yml up -d --build
+#    3. 浏览器访问 http://<SITE_ADDRESS>  （Caddy 统一入口, 无需暴露 3000/8000 端口）
+#
+#  ⚠️ 与开发版 docker-compose.yml 的区别:
+#    - 多了 frontend 服务（用根目录 Dockerfile 构建 Next.js 生产镜像）
+#    - Storyden 不再映射宿主机端口（Caddy 走 compose 内部网络访问）
+#    - Caddy 挂载 Caddyfile.production（前端 + API 统一反代, 同源无 CORS 问题）
+#    - 前端不要设置 NEXT_PUBLIC_API_URL! 它会在构建时把绝对地址内联进代码,
+#      导致浏览器跨域请求被 CORS 拦截（正是之前「加载失败」的根源）
+# ============================================================
+
+services:
+  frontend:
+    # Next.js 前端（根目录 Dockerfile: 多阶段构建, npm start 生产模式）
+    build: .
+    restart: unless-stopped
+    # 只需本机调试用, 绑 127.0.0.1 不暴露公网; 公网流量全部走 Caddy
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - storyden
+
+  storyden:
+    # Storyden 官方镜像（前端 + API 一体）, 固定版本号
+    image: ghcr.io/southclaws/storyden:1.26.15
+    user: "1000:1000"   # 与宿主机 ./data 属主一致（服务器上如遇写权限问题再调整）
+    restart: unless-stopped
+    # 生产环境不映射宿主机端口; 如需本机调试 API 可临时改为 "127.0.0.1:8001:8000"
+    environment:
+      PUBLIC_WEB_ADDRESS: ${PUBLIC_WEB_ADDRESS}
+      PUBLIC_API_ADDRESS: ${PUBLIC_API_ADDRESS}
+      SESSION_KEY: ${SESSION_KEY}
+    volumes:
+      # 数据目录（数据库 + 上传的图片）持久化到本机 ./data
+      - ./data:/storyden/data
+
+  caddy:
+    # 带 rate_limit 限流插件的自定义镜像（见 deploy/caddy/Dockerfile）
+    build: ./deploy/caddy
+    image: whs-community-caddy:local
+    restart: unless-stopped
+    ports:
+      - "80:80"     # HTTP 入口（SITE_ADDRESS 为 IP 时）
+      - "443:443"   # HTTPS 入口（SITE_ADDRESS 为域名时 Caddy 自动申请证书）
+    environment:
+      # Caddyfile.production 里的 {$SITE_ADDRESS} 占位符取自这个变量
+      SITE_ADDRESS: ${SITE_ADDRESS:-localhost}
+    volumes:
+      - ./Caddyfile.production:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

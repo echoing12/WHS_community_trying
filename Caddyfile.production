@@ -1,0 +1,35 @@
+# ============================================================
+#  生产环境 Caddy 配置: 统一入口（前端页面 + API 同源反代）
+#
+#  用法: 由 docker-compose.prod.yml 挂载到 /etc/caddy/Caddyfile
+#        SITE_ADDRESS 从 .env 读取（IP 或域名）, 默认 localhost
+#
+#  - 站点地址是 IP 时: Caddy 以纯 HTTP 提供 80 端口服务
+#  - 站点地址是域名时: Caddy 自动申请/续期 Let's Encrypt HTTPS 证书
+#  ⚠️ rate_limit 依赖 mholt/caddy-ratelimit 插件（deploy/caddy/Dockerfile 已构建）
+# ============================================================
+{$SITE_ADDRESS:localhost} {
+	# route 保证求值顺序: 先限流、后反代
+	route {
+		# 登录: 每 IP 每分钟最多 10 次尝试（防暴力破解）
+		rate_limit /api/auth/password/signin {
+			zone signin {
+				key {http.request.remote.host}
+				window 1m
+				events 10
+			}
+		}
+		# 注册: 每 IP 每分钟最多 5 次尝试（防批量注册）
+		rate_limit /api/auth/password/signup {
+			zone signup {
+				key {http.request.remote.host}
+				window 1m
+				events 5
+			}
+		}
+		# API 请求 → Storyden 容器（compose 网络内按服务名访问）
+		reverse_proxy /api/* storyden:8000
+		# 其余（页面/静态资源）→ 前端容器
+		reverse_proxy frontend:3000
+	}
+}
