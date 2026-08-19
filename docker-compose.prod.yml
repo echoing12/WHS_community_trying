@@ -64,6 +64,14 @@ services:
       - caddy_data:/data
       - caddy_config:/config
 
+  cookie-strip:
+    # 仅「纯 HTTP 部署」需要：去掉会话 Cookie 的 Secure 标志（否则 HTTP 下登录无效）
+    # ⚠️ 以后上 HTTPS/域名后删除此服务，并恢复 Caddyfile 的 storyden:8000 直连
+    image: nginx:alpine
+    restart: unless-stopped
+    volumes:
+      - ./deploy/cookie-strip.conf:/etc/nginx/conf.d/default.conf:ro
+
 volumes:
   caddy_data:
   caddy_config:

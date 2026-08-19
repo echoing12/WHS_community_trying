@@ -28,8 +28,9 @@
 				events 5
 			}
 		}
-		# API 请求 → Storyden 容器（compose 网络内按服务名访问）
-		reverse_proxy /api/* storyden:8000
+		# API → cookie-strip（纯 HTTP 部署时去掉会话 Cookie 的 Secure 标志，否则登录无效）
+		# ⚠️ 以后上 HTTPS/域名后改回 storyden:8000 直连，并删除 cookie-strip 服务
+		reverse_proxy /api/* cookie-strip:8000
 		# 其余（页面/静态资源）→ 前端容器
 		reverse_proxy frontend:3000
 	}
