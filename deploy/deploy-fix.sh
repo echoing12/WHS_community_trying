@@ -81,6 +81,8 @@ s = open(p, encoding='utf-8').read()
 s = s.replace('\r\n', '\n')
 orig = s
 s = re.sub(r'^[ \t]*NEXT_PUBLIC_API_URL:[^\n]*\n', '', s, flags=re.M)
+# 删掉 NEXT_PUBLIC_API_URL 后若 environment: 已无子项（紧跟同级键），把空的 environment: 也删掉
+s = re.sub(r'^([ \t]*)environment:[ \t]*\n(?=\1\S)', '', s, flags=re.M)
 s = re.sub(r'^([ \t]*)ports:[ \t]*\n[ \t]*- "8001:8000"[ \t]*\n', '', s, flags=re.M)
 changed = s != orig
 open(p, 'w', encoding='utf-8', newline='\n').write(s)
