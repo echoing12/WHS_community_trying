@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
+import { useT } from '@/hooks/useLang';
 import { cn } from '@/lib/utils';
 
 const STORAGE_KEY = 'whs-theme';
@@ -9,6 +10,7 @@ const STORAGE_KEY = 'whs-theme';
 // 主题切换按钮：class 切换（<html class="dark">）+ localStorage 持久化。
 // 首次访问跟随系统偏好（prefers-color-scheme）。
 export default function ThemeToggle({ className }: { className?: string }) {
+  const t = useT();
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
@@ -32,8 +34,8 @@ export default function ThemeToggle({ className }: { className?: string }) {
     <button
       type="button"
       onClick={toggle}
-      title={dark ? '切换到浅色模式' : '切换到深色模式'}
-      className={cn('rounded-full p-2 transition-colors hover:bg-butter', className)}
+      title={dark ? t('切换到浅色模式') : t('切换到深色模式')}
+      className={cn('rounded-lg p-2 transition-colors hover:bg-ink/5', className)}
     >
       {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
     </button>

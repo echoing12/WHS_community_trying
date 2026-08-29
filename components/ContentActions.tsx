@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { MoreVertical, PencilLine, Trash2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/hooks/useLang';
 import { cn } from '@/lib/utils';
 
 // 内容操作菜单（编辑 / 删除），作者本人或管理员可见（基于Storyden官方规格权限模型：
@@ -27,6 +28,7 @@ export default function ContentActions({
 }) {
   const router = useRouter();
   const { user } = useAuth();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -38,7 +40,7 @@ export default function ContentActions({
     e.preventDefault();
     e.stopPropagation();
     setOpen(false);
-    if (!window.confirm(deletePrompt)) return;
+    if (!window.confirm(t(deletePrompt))) return;
     setDeleting(true);
     try {
       await onDelete();
@@ -57,8 +59,8 @@ export default function ContentActions({
           e.preventDefault();
           setOpen((v) => !v);
         }}
-        title="更多操作"
-        className="rounded-full p-1.5 text-ink/50 transition-colors hover:bg-butter hover:text-ink"
+        title={t('更多操作')}
+        className="rounded-lg p-1.5 text-ink/50 transition-colors hover:bg-ink/5 hover:text-ink"
       >
         <MoreVertical className="h-4 w-4" />
       </button>
@@ -67,23 +69,23 @@ export default function ContentActions({
         <>
           {/* 点击空白处关闭 */}
           <div className="fixed inset-0 z-30" onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }} />
-          <div className="absolute right-0 z-40 mt-1 w-40 rounded-2xl border-2 border-dashed border-ink bg-surface p-1.5 shadow-hand">
+          <div className="absolute right-0 z-40 mt-1 w-40 rounded-xl border border-ink/10 bg-surface p-1.5 shadow-hand">
             <Link
               href={editHref}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-ink transition-colors hover:bg-butter"
+              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-ink transition-colors hover:bg-ink/5"
             >
               <PencilLine className="h-4 w-4" />
-              编辑
+              {t('编辑')}
             </Link>
             <button
               type="button"
               onClick={handleDelete}
               disabled={deleting}
-              className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-red-500 transition-colors hover:bg-butter disabled:opacity-50"
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-red-500 transition-colors hover:bg-ink/5 disabled:opacity-50"
             >
               <Trash2 className="h-4 w-4" />
-              {deleting ? '删除中…' : deleteLabel}
+              {deleting ? t('删除中…') : t(deleteLabel)}
             </button>
           </div>
         </>

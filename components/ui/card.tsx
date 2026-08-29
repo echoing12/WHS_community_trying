@@ -1,13 +1,14 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-// ============ 手绘风卡片（shadcn/ui Card 结构） ============
+// ============ 克制风格卡片（shadcn/ui Card 结构） ============
+// 1px 实线描边 + 柔和阴影 + 中圆角
 
 const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
     <div
       ref={ref}
-      className={cn('rounded-2xl border-2 border-dashed border-ink/70 bg-surface shadow-hand', className)}
+      className={cn('rounded-xl border border-ink/10 bg-surface shadow-hand', className)}
       {...props}
     />
   )

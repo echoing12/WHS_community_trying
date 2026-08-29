@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/hooks/useLang';
 import { fetchAdminAccounts, fetchRoles } from '@/lib/api';
 import type { AdminAccountView, RoleInfo } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
@@ -20,6 +21,7 @@ const PAGE_SIZE = 20;
 
 export default function AdminMembersPage() {
   const { isAuthenticated, user, isLoading } = useAuth();
+  const t = useT();
   const [accounts, setAccounts] = useState<AdminAccountView[]>([]);
   const [roles, setRoles] = useState<RoleInfo[]>([]);
   const [total, setTotal] = useState(0);
@@ -53,11 +55,11 @@ export default function AdminMembersPage() {
     } catch {
       setAccounts([]);
       setTotal(0);
-      setError('无法加载账号列表，请检查登录状态后重试');
+      setError(t('无法加载账号列表，请检查登录状态后重试'));
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, q, page]);
+  }, [isAdmin, q, page, t]);
 
   useEffect(() => {
     load();
@@ -70,16 +72,16 @@ export default function AdminMembersPage() {
 
   // ---- 访问控制 ----
   if (isLoading) {
-    return <p className="py-16 text-center text-ink/50">加载中…</p>;
+    return <p className="py-16 text-center text-ink/50">{t('加载中…')}</p>;
   }
 
   if (!isAuthenticated) {
     return (
       <div className="hand-card p-10 text-center">
-        <p className="font-bold">请先登录</p>
-        <p className="mt-2 text-sm text-ink/60">账号管理需要管理员权限</p>
+        <p className="font-medium">{t('请先登录')}</p>
+        <p className="mt-2 text-sm text-ink/60">{t('账号管理需要管理员权限')}</p>
         <Link href="/auth/login" className="mt-4 inline-block">
-          <Button>去登录</Button>
+          <Button>{t('去登录')}</Button>
         </Link>
       </div>
     );
@@ -89,8 +91,8 @@ export default function AdminMembersPage() {
     return (
       <div className="hand-card p-10 text-center">
         <ShieldAlert className="mx-auto h-10 w-10 text-ink/40" />
-        <p className="mt-3 font-bold">无权访问</p>
-        <p className="mt-2 text-sm text-ink/60">账号管理仅对管理员开放</p>
+        <p className="mt-3 font-medium">{t('无权访问')}</p>
+        <p className="mt-2 text-sm text-ink/60">{t('账号管理仅对管理员开放')}</p>
       </div>
     );
   }
@@ -100,9 +102,9 @@ export default function AdminMembersPage() {
       {/* 页头：标题 + 搜索 */}
       <section className="hand-card flex flex-col items-center gap-4 p-8 text-center lg:flex-row lg:justify-between lg:text-left">
         <div>
-          <h1 className="hand-title text-2xl text-ink lg:text-3xl">🔧 账号管理</h1>
+          <h1 className="hand-title text-2xl text-ink lg:text-3xl">{t('🔧 账号管理')}</h1>
           <p className="mt-2 text-ink/70">
-            分配/移除角色、封禁/解封、设置验证状态。权限校验由服务端执行。
+            {t('分配/移除角色、封禁/解封、设置验证状态。权限校验由服务端执行。')}
           </p>
         </div>
         <div className="relative w-full lg:w-72">
@@ -110,7 +112,7 @@ export default function AdminMembersPage() {
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="按昵称或账号搜索…"
+            placeholder={t('按昵称或账号搜索…')}
             className="pl-11"
           />
         </div>
@@ -118,18 +120,18 @@ export default function AdminMembersPage() {
 
       {/* 账号列表 */}
       {loading && accounts.length === 0 ? (
-        <p className="py-16 text-center text-ink/50">加载中…</p>
+        <p className="py-16 text-center text-ink/50">{t('加载中…')}</p>
       ) : error ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">{error}</p>
+          <p className="font-medium">{error}</p>
           <button onClick={() => load()} className="mt-4 inline-block">
-            <Button>重试</Button>
+            <Button>{t('重试')}</Button>
           </button>
         </div>
       ) : accounts.length === 0 ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">没有找到匹配的账号</p>
-          <p className="mt-2 text-sm text-ink/60">换个关键词试试吧</p>
+          <p className="font-medium">{t('没有找到匹配的账号')}</p>
+          <p className="mt-2 text-sm text-ink/60">{t('换个关键词试试吧')}</p>
         </div>
       ) : (
         <>
@@ -147,9 +149,9 @@ export default function AdminMembersPage() {
 
           {/* 分页 */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between rounded-2xl border-2 border-dashed border-ink/30 bg-surface/60 px-4 py-3">
-              <span className="text-sm text-ink/60">共 {total} 个账号</span>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink/10 bg-surface/60 px-4 py-3">
+              <span className="text-sm text-ink/60">{t('共 {n} 个账号', { n: total })}</span>
+              <div className="ml-auto flex items-center gap-2">
                 <Button
                   variant="default"
                   size="sm"
@@ -157,9 +159,9 @@ export default function AdminMembersPage() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                 >
                   <ChevronLeft className="h-4 w-4" />
-                  上一页
+                  {t('上一页')}
                 </Button>
-                <span className="px-1 text-sm font-bold text-ink/70">
+                <span className="px-1 text-sm font-medium text-ink/70">
                   {page} / {totalPages}
                 </span>
                 <Button
@@ -168,7 +170,7 @@ export default function AdminMembersPage() {
                   disabled={page >= totalPages}
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 >
-                  下一页
+                  {t('下一页')}
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
@@ -178,8 +180,8 @@ export default function AdminMembersPage() {
       )}
 
       {/* 免责声明 */}
-      <p className="border-t-2 border-dashed border-ink/20 pt-4 text-center text-xs text-ink/50">
-        账号管理操作会影响社区成员的访问权限，请谨慎操作
+      <p className="border-t border-ink/10 pt-4 text-center text-xs text-ink/50">
+        {t('账号管理操作会影响社区成员的访问权限，请谨慎操作')}
       </p>
     </div>
   );
@@ -197,6 +199,7 @@ function AdminAccountCard({
   isSelf: boolean;
   onChanged: (updated: AdminAccountView) => void;
 }) {
+  const t = useT();
   return (
     <article className="hand-card space-y-3 p-5">
       <div className="flex flex-wrap items-center gap-3">
@@ -204,12 +207,12 @@ function AdminAccountCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="hand-title text-lg text-ink">{account.name}</h3>
-            {account.admin && <Badge variant="ink">管理员</Badge>}
-            {isSelf && <Badge variant="butter">我</Badge>}
+            {account.admin && <Badge variant="ink">{t('管理员')}</Badge>}
+            {isSelf && <Badge variant="butter">{t('我')}</Badge>}
           </div>
           <p className="mt-0.5 text-sm text-ink/60">
             @{account.handle}
-            {account.joined ? ` · 注册于 ${formatDate(account.joined)}` : ''}
+            {account.joined ? ` · ${t('注册于 {date}', { date: formatDate(account.joined) })}` : ''}
           </p>
         </div>
       </div>

@@ -2,7 +2,7 @@
   "name": "whs-community",
   "version": "0.1.0",
   "private": true,
-  "description": "WHS（华氏综合征）患者交流论坛前端 —— Next.js 14 + TypeScript + Tailwind CSS",
+  "description": "WHS患者交流论坛前端 —— Next.js 14 + TypeScript + Tailwind CSS",
   "engines": {
     "node": ">=18.17.0"
   },

@@ -2,16 +2,16 @@ import * as React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
-// ============ 手绘风按钮 ============
-// 默认：透明背景 + 虚线边框，hover 时背景变为淡黄 #f9d56e
+// ============ 克制风格按钮 ============
+// 方框圆角框：1px 实线描边 + 中圆角；hover 仅轻微加深，不用亮色填充
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-full border-2 border-dashed font-bold transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-butter focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg border font-medium transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-solid/40 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50',
   {
     variants: {
       variant: {
-        default: 'border-ink bg-transparent text-ink hover:bg-butter',
-        solid: 'border-ink bg-ink-solid text-on-solid hover:bg-ink-solid/90',
-        ghost: 'border-transparent hover:bg-butter/50',
+        default: 'border-ink/15 bg-transparent text-ink hover:border-ink/30 hover:bg-ink/5',
+        solid: 'border-ink-solid bg-ink-solid text-on-solid hover:bg-ink-solid/90',
+        ghost: 'border-transparent hover:bg-ink/5',
       },
       size: {
         default: 'px-5 py-2.5 text-sm',

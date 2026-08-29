@@ -1,13 +1,14 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-// 手绘风输入框：圆角 + 虚线边框，聚焦时墨绿描边 + 淡黄光晕
+// ============ 克制风格输入框 ============
+// 方框圆角框：1px 实线描边，聚焦时深墨绿细描边 + 柔和光晕
 const Input = React.forwardRef<HTMLInputElement, React.InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (
     <input
       ref={ref}
       className={cn(
-        'h-11 w-full rounded-2xl border-2 border-dashed border-ink/60 bg-surface px-4 text-sm font-medium placeholder:text-ink/40 focus:border-ink focus:outline-none focus:ring-2 focus:ring-butter',
+        'h-11 w-full rounded-lg border border-ink/15 bg-surface px-4 text-sm text-ink transition-colors placeholder:text-ink/40 focus:border-ink-solid/50 focus:outline-none focus:ring-2 focus:ring-ink-solid/15',
         className
       )}
       {...props}

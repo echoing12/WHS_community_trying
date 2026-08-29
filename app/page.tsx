@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { PenLine, Search } from 'lucide-react';
 import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
+import { SproutDecor } from '@/components/Decor';
 import LoginHint from '@/components/LoginHint';
 import PostCard from '@/components/PostCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/hooks/useLang';
 import { fetchPosts, fetchPostsByTag, fetchTags, type PostListResult } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +32,7 @@ const fetchPostsPage = (tag: string, page: number): Promise<PostListResult> =>
 export default function HomePage() {
   // 基于Storyden官方规格: 写操作按钮（发布新帖）按登录状态动态显示
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const t = useT();
   const [keyword, setKeyword] = useState('');
   const [activeTag, setActiveTag] = useState('');
 
@@ -59,17 +62,24 @@ export default function HomePage() {
 
   return (
     <div className="space-y-8">
-      {/* 欢迎横幅 */}
-      <section className="hand-card flex flex-col items-center gap-4 p-8 text-center lg:flex-row lg:justify-between lg:text-left">
-        <div>
-          <h1 className="hand-title text-2xl text-ink lg:text-3xl">🌿 欢迎回家，我们在一起</h1>
-          <p className="mt-2 text-ink/70">
-            分享经验、互相打气，这里属于每一位 WHS 患者的家庭。
-          </p>
+      {/* 欢迎横幅：暖色渐变 + 浅淡新芽装饰，克制温馨 */}
+      <section className="hand-card relative overflow-hidden p-8 lg:p-10">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-gradient-to-br from-butter/50 via-transparent to-ink-solid/5"
+        />
+        <SproutDecor className="pointer-events-none absolute -right-6 -top-6 h-44 w-44 rotate-12 text-ink-solid/10" />
+        <div className="relative flex flex-col items-center gap-4 text-center lg:flex-row lg:justify-between lg:text-left">
+          <div>
+            <h1 className="hand-title text-2xl text-ink lg:text-3xl">{t('🌿 欢迎回家，我们在一起')}</h1>
+            <p className="mt-2 text-ink/60">
+              {t('分享经验、互相打气，这里属于每一位 WHS 患者的家庭。')}
+            </p>
+          </div>
+          <span className="rounded-lg border border-ink/10 bg-surface px-5 py-2 text-sm font-medium text-ink/70 shadow-hand-sm">
+            {t('在这里，你不孤单')}
+          </span>
         </div>
-        <span className="rotate-2 rounded-full border-2 border-dashed border-ink bg-butter px-5 py-2 font-bold italic shadow-hand-sm">
-          在这里，你不孤单 ✏️
-        </span>
       </section>
 
       {/* 搜索框 + 发布新帖按钮 */}
@@ -79,7 +89,7 @@ export default function HomePage() {
           <Input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="搜索帖子标题…"
+            placeholder={t('搜索帖子标题…')}
             className="pl-11"
           />
         </div>
@@ -88,7 +98,7 @@ export default function HomePage() {
           <Link href="/create">
             <Button className="w-full sm:w-auto">
               <PenLine className="h-4 w-4" />
-              发布新帖
+              {t('发布新帖')}
             </Button>
           </Link>
         ) : (
@@ -102,7 +112,7 @@ export default function HomePage() {
       {/* 标签筛选（真实标签列表） */}
       <div className="flex flex-wrap gap-2">
         <TagChip active={activeTag === ''} onClick={() => setActiveTag('')}>
-          全部
+          {t('全部')}
         </TagChip>
         {allTags.map((tag) => (
           <TagChip key={tag} active={activeTag === tag} onClick={() => setActiveTag(tag)}>
@@ -113,21 +123,22 @@ export default function HomePage() {
 
       {/* 帖子列表 */}
       {loading ? (
-        <p className="py-16 text-center text-ink/50">加载中…</p>
+        <p className="py-16 text-center text-ink/50">{t('加载中…')}</p>
       ) : error && posts.length === 0 ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">帖子加载失败，请检查网络后重试</p>
+          <p className="font-medium">{t('帖子加载失败，请检查网络后重试')}</p>
           <Button className="mt-4" onClick={() => mutate()}>
-            重试
+            {t('重试')}
           </Button>
         </div>
       ) : filtered.length === 0 ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">没有找到相关帖子</p>
-          <p className="mt-2 text-sm text-ink/60">换个关键词试试，或者来发布第一帖吧！</p>
+          <SproutDecor className="mx-auto h-16 w-16 text-ink-solid/15" />
+          <p className="mt-4 font-medium">{t('没有找到相关帖子')}</p>
+          <p className="mt-1 text-sm text-ink/60">{t('换个关键词试试，或者来发布第一帖吧！')}</p>
           {!authLoading && (isAuthenticated ? (
             <Link href="/create" className="mt-4 inline-block">
-              <Button>去发布</Button>
+              <Button>{t('去发布')}</Button>
             </Link>
           ) : (
             <div className="mt-4">
@@ -151,7 +162,7 @@ export default function HomePage() {
                 disabled={isLoading}
                 onClick={() => setSize((s) => s + 1)}
               >
-                {isLoading ? '加载中…' : '加载更多'}
+                {isLoading ? t('加载中…') : t('加载更多')}
               </Button>
             </div>
           )}
@@ -174,8 +185,8 @@ function TagChip({
     <button
       onClick={onClick}
       className={cn(
-        'rounded-full border-2 border-dashed border-ink/60 px-4 py-1.5 text-sm font-bold transition-colors hover:bg-butter',
-        active && 'border-ink bg-ink-solid text-on-solid hover:bg-ink-solid'
+        'rounded-lg border border-ink/15 px-4 py-1.5 text-sm font-medium transition-colors hover:border-ink/30 hover:bg-ink/5',
+        active && 'border-ink-solid bg-ink-solid text-on-solid hover:bg-ink-solid'
       )}
     >
       {children}

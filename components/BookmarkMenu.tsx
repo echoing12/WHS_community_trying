@@ -12,6 +12,7 @@ import {
   togglePostBookmark,
 } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { useT } from '@/hooks/useLang';
 import type { CollectionItem } from '@/lib/api';
 
 // 收藏按钮 + 收藏夹选择器（帖子 / 知识库详情共用）：
@@ -36,6 +37,7 @@ export default function BookmarkMenu({
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
+  const t = useT();
 
   const toggle = kind === 'post' ? togglePostBookmark : toggleNodeBookmark;
 
@@ -102,26 +104,26 @@ export default function BookmarkMenu({
         type="button"
         onClick={openMenu}
         className={cn(
-          'inline-flex items-center gap-2 rounded-full border-2 border-dashed border-ink/60 px-5 py-2 text-sm font-bold transition-colors hover:bg-butter active:scale-95',
-          collected && 'border-ink bg-butter'
+          'inline-flex items-center gap-2 rounded-lg border border-ink/15 px-5 py-2 text-sm font-medium transition-colors hover:border-ink/30 hover:bg-ink/5',
+          collected && 'border-ink-solid bg-ink-solid/10 text-ink'
         )}
       >
-        <Bookmark className={cn('h-4 w-4 transition-transform', collected && 'fill-ink')} />
-        {collected ? '已收藏' : '收藏'}
+        <Bookmark className={cn('h-4 w-4 transition-transform', collected && 'fill-ink-solid text-ink-solid')} />
+        {collected ? t('已收藏') : t('收藏')}
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute left-0 z-40 mt-2 w-72 rounded-2xl border-2 border-dashed border-ink bg-surface p-3 shadow-hand">
-            <p className="mb-2 text-xs font-bold text-ink/50">加入收藏夹：</p>
+          <div className="absolute left-0 z-40 mt-2 w-72 rounded-xl border border-ink/10 bg-surface p-3 shadow-hand">
+            <p className="mb-2 text-xs font-medium text-ink/50">{t('加入收藏夹：')}</p>
             {loading ? (
               <p className="flex items-center gap-2 py-3 text-sm text-ink/50">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                加载中…
+                {t('加载中…')}
               </p>
             ) : collections.length === 0 ? (
-              <p className="py-2 text-sm text-ink/50">还没有收藏夹，先新建一个吧</p>
+              <p className="py-2 text-sm text-ink/50">{t('还没有收藏夹，先新建一个吧')}</p>
             ) : (
               <div className="max-h-48 space-y-1 overflow-y-auto">
                 {collections.map((c) => (
@@ -130,12 +132,12 @@ export default function BookmarkMenu({
                     type="button"
                     onClick={() => toggleInCollection(c.slug)}
                     className={cn(
-                      'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-colors hover:bg-butter',
-                      markOfItem.has(c.slug) && 'bg-butter'
+                      'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-ink/5',
+                      markOfItem.has(c.slug) && 'bg-ink/5'
                     )}
                   >
                     <Bookmark
-                      className={cn('h-4 w-4 shrink-0', markOfItem.has(c.slug) && 'fill-ink')}
+                      className={cn('h-4 w-4 shrink-0', markOfItem.has(c.slug) && 'fill-ink-solid text-ink-solid')}
                     />
                     <span className="min-w-0 flex-1 truncate">{c.name}</span>
                     <span className="text-xs font-medium text-ink/40">{c.item_count}</span>
@@ -145,22 +147,22 @@ export default function BookmarkMenu({
             )}
 
             {/* 新建收藏夹 */}
-            <div className="mt-3 flex gap-2 border-t-2 border-dashed border-ink/20 pt-3">
+            <div className="mt-3 flex gap-2 border-t border-ink/10 pt-3">
               <Input
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
-                placeholder="新建收藏夹名称…"
+                placeholder={t('新建收藏夹名称…')}
                 className="h-9 text-xs"
                 onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
               />
               <Button size="sm" onClick={handleCreate} disabled={creating || !newName.trim()}>
                 {creating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-                新建
+                {t('新建')}
               </Button>
             </div>
             <p className="mt-2 flex items-center gap-1 text-[11px] text-ink/40">
               <FolderPlus className="h-3 w-3" />
-              在「收藏夹」页面可管理全部收藏夹
+              {t('在「收藏夹」页面可管理全部收藏夹')}
             </p>
           </div>
         </>

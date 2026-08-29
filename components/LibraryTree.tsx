@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight, FileText, Folder, FolderOpen } from 'lucide-react';
+import { useT } from '@/hooks/useLang';
 import { cn } from '@/lib/utils';
 import type { LibraryNode } from '@/types';
 
@@ -19,6 +20,7 @@ function countLeaves(node: LibraryNode): number {
 function TreeNode({ node, depth }: { node: LibraryNode; depth: number }) {
   const [open, setOpen] = useState(depth < 1); // 根层级默认展开
   const hasChildren = node.children.length > 0;
+  const t = useT();
 
   // 目录节点：可展开 / 收起
   if (hasChildren) {
@@ -27,7 +29,7 @@ function TreeNode({ node, depth }: { node: LibraryNode; depth: number }) {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold text-ink transition-colors hover:bg-butter"
+          className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-ink/5"
         >
           <ChevronRight
             className={cn('h-4 w-4 shrink-0 text-ink/60 transition-transform', open && 'rotate-90')}
@@ -39,12 +41,12 @@ function TreeNode({ node, depth }: { node: LibraryNode; depth: number }) {
           )}
           <span className="flex-1 truncate">{node.title}</span>
           <span className="text-xs font-medium text-ink/40">
-            {countLeaves(node)} 页
+            {t('{n} 页', { n: countLeaves(node) })}
           </span>
         </button>
 
         {open && (
-          <div className="ml-4 space-y-1 border-l-2 border-dashed border-ink/30 pl-4">
+          <div className="ml-4 space-y-1 border-l border-ink/10 pl-4">
             {node.children.map((child) => (
               <TreeNode key={child.id} node={child} depth={depth + 1} />
             ))}
@@ -58,11 +60,11 @@ function TreeNode({ node, depth }: { node: LibraryNode; depth: number }) {
   return (
     <Link
       href={`/library/${node.slug}`}
-      className="group flex items-start gap-2 rounded-xl px-3 py-2 text-sm text-ink transition-colors hover:bg-butter"
+      className="group flex items-start gap-2 rounded-lg px-3 py-2 text-sm text-ink transition-colors hover:bg-ink/5"
     >
       <FileText className="mt-0.5 h-4 w-4 shrink-0 text-ink/60" />
       <span className="min-w-0">
-        <span className="font-bold group-hover:underline">{node.title}</span>
+        <span className="font-medium group-hover:underline">{node.title}</span>
         {node.summary && (
           <span className="block truncate text-xs font-medium text-ink/50">{node.summary}</span>
         )}

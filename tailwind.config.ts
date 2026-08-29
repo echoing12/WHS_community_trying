@@ -6,27 +6,33 @@ const config: Config = {
   content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
   theme: {
     extend: {
-      // ============ 清新手绘风配色（CSS 变量，深色模式自动切换） ============
+      // ============ 克制暖色配色（CSS 变量，深色模式自动切换） ============
+      // 用色克制：暖白背景 + 暖炭灰文字 + 单一低饱和深墨绿强调色，
+      // 黄色点缀降级为柔和暖沙色，仅用于 hover 背景与轻微高亮。
       colors: {
-        mint: 'rgb(var(--color-mint) / <alpha-value>)', // 页面背景
-        ink: 'rgb(var(--color-ink) / <alpha-value>)', // 主色：文字 / 边框
-        'ink-solid': 'rgb(var(--color-ink-solid) / <alpha-value>)', // 实心按钮 / 代码块背景
+        mint: 'rgb(var(--color-mint) / <alpha-value>)', // 页面背景（暖白）
+        ink: 'rgb(var(--color-ink) / <alpha-value>)', // 主文字 / 边框
+        'ink-solid': 'rgb(var(--color-ink-solid) / <alpha-value>)', // 实心按钮 / 强调
         'on-solid': 'rgb(var(--color-on-solid) / <alpha-value>)', // 实心背景上的文字
-        butter: 'rgb(var(--color-butter) / <alpha-value>)', // 点缀：hover 背景 / 高亮
+        butter: 'rgb(var(--color-butter) / <alpha-value>)', // 柔和暖沙色：hover 背景 / 高亮
         surface: 'rgb(var(--color-surface) / <alpha-value>)', // 卡片 / 输入框背景
       },
       borderRadius: {
-        '2xl': '1.2rem', // 卡片圆角
+        '2xl': '1rem', // 卡片圆角（克制：不做夸张大圆角）
       },
-      // ============ 手绘风扩展 ============
+      // ============ 透明度补充 ============
+      // 默认透明度刻度不含 8% / 15%，补充后 border-ink/15 等修饰符可用
+      opacity: {
+        8: '0.08',
+        15: '0.15',
+      },
+      // ============ 柔和阴影（软扩散，替代原来的硬阴影） ============
       boxShadow: {
-        // 卡片硬阴影：6px 6px 0px 主色 12% 透明
-        hand: '6px 6px 0px rgba(45, 90, 74, 0.12)',
-        'hand-sm': '4px 4px 0px rgba(45, 90, 74, 0.12)',
+        hand: '0 1px 2px rgba(23, 25, 22, 0.05), 0 12px 28px -12px rgba(23, 25, 22, 0.14)',
+        'hand-sm': '0 1px 2px rgba(23, 25, 22, 0.05), 0 4px 10px -4px rgba(23, 25, 22, 0.1)',
       },
       fontFamily: {
         // 正文使用系统无衬线（中英文均友好，无需下载字体）
-        // 标题的"手写感"由 .hand-title 类的 font-bold + italic 实现（见 globals.css）
         sans: [
           '-apple-system',
           'BlinkMacSystemFont',

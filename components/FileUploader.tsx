@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react';
 import { FileText, ImagePlus, Loader2, Video } from 'lucide-react';
 import { uploadAsset } from '@/lib/api';
+import { useT } from '@/hooks/useLang';
 import { cn } from '@/lib/utils';
 
 // 前端上传限制（后端按魔数识别 MIME 无硬性限制，这里提前拦截避免无效的长耗时上传）
@@ -36,6 +37,7 @@ export default function FileUploader({
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const t = useT();
 
   const isImage = kind === 'image';
   const isVideo = kind === 'video';
@@ -46,18 +48,16 @@ export default function FileUploader({
     if (!file) return;
     // 大小上限提前拦截（按类型区分，避免长时间上传后失败）
     if (file.size > SIZE_LIMITS[kind]) {
-      setError(
-        `文件超过 ${SIZE_LIMIT_LABELS[kind]}，请压缩后重试`
-      );
+      setError(t('文件超过 {size}，请压缩后重试', { size: SIZE_LIMIT_LABELS[kind] }));
       return;
     }
     // 类型校验（accept 属性可被绕过，这里按 MIME / 扩展名兜底）
     if (kind === 'image' && !file.type.startsWith('image/')) {
-      setError('请选择图片文件（JPG / PNG / GIF 等）');
+      setError(t('请选择图片文件（JPG / PNG / GIF 等）'));
       return;
     }
     if (kind === 'video' && !file.type.startsWith('video/')) {
-      setError('请选择视频文件（MP4 / WebM 等浏览器可播放格式）');
+      setError(t('请选择视频文件（MP4 / WebM 等浏览器可播放格式）'));
       return;
     }
     if (kind === 'document') {
@@ -68,7 +68,7 @@ export default function FileUploader({
         file.type === 'text/plain' ||
         file.type.startsWith('application/vnd');
       if (!typeOk) {
-        setError('仅支持 PDF / Word / Excel / TXT 文档');
+        setError(t('仅支持 PDF / Word / Excel / TXT 文档'));
         return;
       }
     }
@@ -88,10 +88,10 @@ export default function FileUploader({
     } catch {
       setError(
         isImage
-          ? '图片上传失败，请重试（支持常见图片格式）'
+          ? t('图片上传失败，请重试（支持常见图片格式）')
           : isVideo
-            ? '视频上传失败，请重试（支持 MP4 / WebM 等常见格式）'
-            : '文档上传失败，请重试'
+            ? t('视频上传失败，请重试（支持 MP4 / WebM 等常见格式）')
+            : t('文档上传失败，请重试')
       );
     } finally {
       setUploading(false);
@@ -106,12 +106,12 @@ export default function FileUploader({
         disabled={uploading}
         title={
           isImage
-            ? '插入图片'
+            ? t('插入图片')
             : isVideo
-              ? '上传视频（MP4 / WebM 等浏览器可播放格式）'
-              : '上传文档附件（PDF / Word / Excel / TXT，≤20MB）'
+              ? t('上传视频（MP4 / WebM 等浏览器可播放格式）')
+              : t('上传文档附件（PDF / Word / Excel / TXT，≤20MB）')
         }
-        className="inline-flex items-center gap-1 rounded-full border-2 border-dashed border-ink/60 px-3 py-1 text-xs font-bold transition-colors hover:bg-butter disabled:opacity-50"
+        className="inline-flex items-center gap-1 rounded-lg border border-ink/15 px-3 py-1 text-xs font-medium transition-colors hover:border-ink/30 hover:bg-ink/5 disabled:opacity-50"
       >
         {uploading ? (
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -122,7 +122,7 @@ export default function FileUploader({
         ) : (
           <FileText className="h-3.5 w-3.5" />
         )}
-        {uploading ? '上传中…' : isImage ? '插图' : isVideo ? '视频' : '文档'}
+        {uploading ? t('上传中…') : isImage ? t('插图') : isVideo ? t('视频') : t('文档')}
       </button>
       <input
         ref={inputRef}
@@ -137,7 +137,7 @@ export default function FileUploader({
         className="hidden"
         onChange={handleFile}
       />
-      {error && <span className="text-xs font-bold text-red-500">{error}</span>}
+      {error && <span className="text-xs font-medium text-red-500">{error}</span>}
     </span>
   );
 }

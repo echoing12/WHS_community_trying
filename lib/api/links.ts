@@ -3,6 +3,7 @@
 // ============================================================
 import { api, extractDomain, linkToLinkItem, type StorydenLink } from './shared';
 import type { LinkItem, SubmitLinkInput } from '@/types';
+import { tr } from '@/lib/i18n';
 
 // 链接列表: GET /api/links
 export async function fetchLinks(): Promise<LinkItem[]> {
@@ -31,10 +32,10 @@ export async function fetchLinkMetadata(url: string): Promise<LinkItem> {
     slug: '',
     url,
     title: domain,
-    description: '提交后由服务端自动抓取网页标题与描述（OG 信息）。',
+    description: tr('提交后由服务端自动抓取网页标题与描述（OG 信息）。'),
     image: '',
     domain,
-    author: { name: '我', avatar: '' },
+    author: { name: tr('我'), avatar: '' },
     created_at: '',
     tags: [],
     like_count: 0,

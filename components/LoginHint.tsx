@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useT } from '@/hooks/useLang';
 import { cn } from '@/lib/utils';
 
 // ============ 登录提示（基于Storyden官方规格权限模型） ============
@@ -13,12 +14,13 @@ export default function LoginHint({
   redirect?: string;
   className?: string;
 }) {
+  const t = useT();
   const href = `/auth/login${redirect ? `?redirect=${encodeURIComponent(redirect)}` : ''}`;
   return (
-    <p className={cn('text-sm font-bold text-ink/60', className)}>
-      登录后可互动，
+    <p className={cn('text-sm font-medium text-ink/60', className)}>
+      {t('登录后可互动，')}
       <Link href={href} className="underline underline-offset-2 transition-colors hover:text-ink">
-        去登录
+        {t('去登录')}
       </Link>
     </p>
   );

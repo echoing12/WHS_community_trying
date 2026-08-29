@@ -6,6 +6,7 @@ import axios from 'axios';
 import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import Cookies from 'js-cookie';
 import { htmlToMarkdown, htmlToPlainText } from '@/lib/markdown';
+import { tr } from '@/lib/i18n';
 import type { LibraryNode, LinkItem, Member, PostDetail, PostListItem, User } from '@/types';
 
 // ============ 环境适配（生产环境兼容） ============
@@ -22,21 +23,21 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/';
 // 403 → PermissionDeniedError（已认证但权限不足）
 // 400 → BadRequestError（请求参数错误）
 export class AuthenticationError extends Error {
-  constructor(message = '未认证或会话已失效') {
+  constructor(message = tr('未认证或会话已失效')) {
     super(message);
     this.name = 'AuthenticationError';
   }
 }
 
 export class PermissionDeniedError extends Error {
-  constructor(message = '权限不足') {
+  constructor(message = tr('权限不足')) {
     super(message);
     this.name = 'PermissionDeniedError';
   }
 }
 
 export class BadRequestError extends Error {
-  constructor(message = '请求参数错误') {
+  constructor(message = tr('请求参数错误')) {
     super(message);
     this.name = 'BadRequestError';
   }
@@ -45,7 +46,7 @@ export class BadRequestError extends Error {
 // 429 Too Many Requests: 代理层（Caddy/Nginx）或后端限流命中
 // （连续登录失败 / 注册过于频繁），由 AuthForm 内联提示，不弹全局窗
 export class RateLimitError extends Error {
-  constructor(message = '请求过于频繁，请稍后再试') {
+  constructor(message = tr('请求过于频繁，请稍后再试')) {
     super(message);
     this.name = 'RateLimitError';
   }
@@ -84,7 +85,7 @@ api.interceptors.response.use(
       // AuthenticationError: 未认证 / 会话过期 → 清理本地状态并跳转登录页（携带当前路径）
       clearLocalSession();
       if (!skip && typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
-        window.alert('登录已过期，请重新登录');
+        window.alert(tr('登录已过期，请重新登录'));
         const redirect = encodeURIComponent(window.location.pathname + window.location.search);
         window.location.href = `/auth/login?redirect=${redirect}`;
       }
@@ -93,13 +94,13 @@ api.interceptors.response.use(
 
     if (status === 401 && isAuthEndpoint) {
       // 登录/注册接口的 401：账号或密码错误（如 signin 凭证无效）
-      return Promise.reject(new AuthenticationError('账号或密码错误，请重试'));
+      return Promise.reject(new AuthenticationError(tr('账号或密码错误，请重试')));
     }
 
     if (status === 404 && isAuthEndpoint) {
       // 登录接口的 404：Storyden 对不存在的账号返回 404 —— 必须与 401 统一文案，
       // 否则会把「账号不存在」暴露给攻击者（账号枚举）
-      return Promise.reject(new AuthenticationError('账号或密码错误，请重试'));
+      return Promise.reject(new AuthenticationError(tr('账号或密码错误，请重试')));
     }
 
     if (status === 429) {
@@ -115,7 +116,7 @@ api.interceptors.response.use(
 
     if (status === 403) {
       // PermissionDeniedError: 已登录但权限不足；skipGlobalHandling 时由调用方内联提示
-      if (!skip) window.alert('您没有权限执行此操作');
+      if (!skip) window.alert(tr('您没有权限执行此操作'));
       return Promise.reject(new PermissionDeniedError());
     }
 
@@ -123,14 +124,18 @@ api.interceptors.response.use(
       // BadRequestError: 显示具体错误信息（认证接口不弹全局提示，由表单内联展示）
       // 生产环境兼容: 生产构建不暴露后端技术细节，统一为友好提示
       const message = isAuthEndpoint || skip ? '' : (IS_PRODUCTION ? '' : extractErrorMessage(error));
-      if (!isAuthEndpoint && !skip) window.alert(message || '请求参数有误，请检查后重试');
+      if (!isAuthEndpoint && !skip) window.alert(message || tr('请求参数有误，请检查后重试'));
       return Promise.reject(new BadRequestError(message));
     }
 
     // 其余状态码（404/409/422/429/5xx 等）：转成带状态码的 Error，
     // 让页面能显示具体原因而不是一律显示「网络异常」
     const detail = extractErrorMessage(error);
-    return Promise.reject(new Error(`请求失败（HTTP ${status}）${detail ? `：${detail}` : ''}`));
+    const statusText = tr('请求失败（HTTP {status}）', { status: status ?? 0 });
+    const msg = detail
+      ? `${statusText}${tr('：{detail}', { detail })}`
+      : statusText;
+    return Promise.reject(new Error(msg));
   }
 );
 
@@ -178,7 +183,7 @@ export function tagNames(tags: Array<string | { name?: string }> | undefined | n
 // 对应本站的 name / avatar / bio / joined_at / role
 export function userFromAccount(acc: StorydenAccount | undefined): User {
   return {
-    name: acc?.name || acc?.handle || '未知用户',
+    name: acc?.name || acc?.handle || tr('未知用户'),
     // 头像 URL：StoryDen 账号头像固定路径 /api/accounts/{handle}/avatar
     avatar: acc?.handle ? `/api/accounts/${encodeURIComponent(acc.handle)}/avatar` : '',
     bio: acc?.bio ? htmlToPlainText(acc.bio) : '',
@@ -224,7 +229,7 @@ export function threadToPostDetail(t: StorydenThread): PostDetail {
   const replyToComment = (r: StorydenReply, nested: (id: string) => CommentItem[]): CommentItem => ({
     id: r.id,
     // 真实 API 返回字段：author.name（对象），对应 Mock 的 author（字符串昵称）
-    author: r.author?.name || '未知用户',
+    author: r.author?.name || tr('未知用户'),
     // 真实 API 返回字段：body（HTML），对应 Mock 的 content（纯文本）
     content: htmlToPlainText(r.body),
     created_at: r.createdAt,
@@ -284,7 +289,7 @@ export function linkToLinkItem(l: StorydenLink): LinkItem {
     description: l.description ?? '',
     image: l.primary_image?.path ?? l.favicon_image?.path ?? '',
     domain: l.domain ?? extractDomain(l.url),
-    author: { name: '社区成员', avatar: '' },
+    author: { name: tr('社区成员'), avatar: '' },
     created_at: '',
     tags: [],
     like_count: 0,
@@ -300,7 +305,7 @@ export function linkToLinkItem(l: StorydenLink): LinkItem {
 export function profileToMember(p: StorydenProfile): Member {
   return {
     id: p.handle ?? p.id,
-    name: p.name || p.handle || '未知用户',
+    name: p.name || p.handle || tr('未知用户'),
     avatar: '',
     joined_at: p.joined ?? p.createdAt ?? '',
     bio: p.bio ? htmlToPlainText(p.bio) : '',

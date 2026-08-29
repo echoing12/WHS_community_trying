@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ChevronDown, FolderOpen } from 'lucide-react';
 import { fetchCategories } from '@/lib/api';
+import { useT } from '@/hooks/useLang';
 import { cn } from '@/lib/utils';
 import type { CategoryItem } from '@/types';
 
@@ -14,6 +15,7 @@ export default function CategorySelect({
   value: string; // 分类 id，空字符串表示不分类
   onChange: (categoryId: string) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
 
@@ -30,11 +32,11 @@ export default function CategorySelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-2xl border-2 border-dashed border-ink/60 bg-surface px-4 py-2.5 text-left text-sm font-medium transition-colors hover:border-ink"
+        className="flex w-full items-center gap-2 rounded-lg border border-ink/15 bg-surface px-4 py-2.5 text-left text-sm font-medium transition-colors hover:border-ink/30"
       >
         <FolderOpen className="h-4 w-4 shrink-0 text-ink/60" />
         <span className={cn('flex-1 truncate', !value && 'text-ink/50')}>
-          {selected ? selected.name : '选择分类（可选）'}
+          {selected ? selected.name : t('选择分类（可选）')}
         </span>
         <ChevronDown
           className={cn('h-4 w-4 shrink-0 text-ink/60 transition-transform', open && 'rotate-180')}
@@ -42,7 +44,7 @@ export default function CategorySelect({
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-2 w-full rounded-2xl border-2 border-dashed border-ink bg-surface p-2 shadow-hand">
+        <div className="absolute z-20 mt-2 w-full rounded-xl border border-ink/10 bg-surface p-1.5 shadow-hand">
           <button
             type="button"
             onClick={() => {
@@ -50,11 +52,11 @@ export default function CategorySelect({
               setOpen(false);
             }}
             className={cn(
-              'w-full rounded-xl px-3 py-2 text-left text-sm font-bold transition-colors hover:bg-butter',
-              !value && 'bg-butter'
+              'w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-ink/5',
+              !value && 'bg-ink/5'
             )}
           >
-            不分类
+            {t('不分类')}
           </button>
           {categories.map((c) => (
             <button
@@ -65,12 +67,12 @@ export default function CategorySelect({
                 setOpen(false);
               }}
               className={cn(
-                'flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm font-bold transition-colors hover:bg-butter',
-                value === c.id && 'bg-butter'
+                'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors hover:bg-ink/5',
+                value === c.id && 'bg-ink/5'
               )}
             >
               <span
-                className="h-3 w-3 shrink-0 rounded-full border border-ink/40"
+                className="h-3 w-3 shrink-0 rounded-full border border-ink/20"
                 style={{ backgroundColor: c.colour || '#f9d56e' }}
               />
               <span className="flex-1 truncate">{c.name}</span>

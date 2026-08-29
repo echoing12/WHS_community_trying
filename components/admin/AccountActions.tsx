@@ -13,6 +13,7 @@ import {
   updateAccountFlags,
 } from '@/lib/api';
 import type { AdminAccountView, RoleInfo } from '@/lib/api';
+import { useT } from '@/hooks/useLang';
 import { cn, formatDate } from '@/lib/utils';
 
 // ============ 管理员账号操作面板（成员主页卡片 / /admin/members 列表共用） ============
@@ -54,6 +55,7 @@ export default function AccountActions({ account, roles, isSelf, onChanged }: Ac
   const [busy, setBusy] = useState(false);
   const accountRef = useRef(account);
   accountRef.current = account;
+  const t = useT();
 
   // 管理员角色（含 ADMINISTRATOR 权限，本站数据库中的 Manager 角色）
   const adminRole = useMemo(() => roles.find((r) => r.is_administrator) ?? null, [roles]);
@@ -79,13 +81,13 @@ export default function AccountActions({ account, roles, isSelf, onChanged }: Ac
         await fn();
         if (optimistic && onChanged) onChanged(optimistic(accountRef.current));
       } catch (err) {
-        window.alert(err instanceof Error && err.message ? err.message : '操作失败，请重试');
+        window.alert(err instanceof Error && err.message ? err.message : t('操作失败，请重试'));
       } finally {
         setBusy(false);
         void refreshAccount();
       }
     },
-    [busy, onChanged, refreshAccount]
+    [busy, onChanged, refreshAccount, t]
   );
 
   // 设为管理员 = 分配管理员角色 + 置 admin 标记（两者独立存储，需同步）
@@ -145,8 +147,8 @@ export default function AccountActions({ account, roles, isSelf, onChanged }: Ac
     const banned = !!account.suspended;
     const confirmed = window.confirm(
       banned
-        ? `确定解封「${account.name}」吗？`
-        : `确定封禁「${account.name}」吗？\n被封禁的账号将无法登录，其内容不受影响。`
+        ? t('确定解封「{name}」吗？', { name: account.name })
+        : t('确定封禁「{name}」吗？\n被封禁的账号将无法登录，其内容不受影响。', { name: account.name })
     );
     if (!confirmed) return;
     void run(
@@ -166,17 +168,17 @@ export default function AccountActions({ account, roles, isSelf, onChanged }: Ac
   const otherRoles = roles.filter((r) => !r.is_administrator);
 
   return (
-    <div className="space-y-3 rounded-2xl border-2 border-dashed border-ink/40 bg-surface/60 p-4">
-      <p className="inline-flex items-center gap-1.5 text-sm font-bold text-ink">
+    <div className="space-y-3 rounded-xl border border-ink/10 bg-surface/60 p-4">
+      <p className="inline-flex items-center gap-1.5 text-sm font-medium text-ink">
         <Shield className="h-4 w-4" />
-        权限管理（管理员）
+        {t('权限管理（管理员）')}
       </p>
 
       {/* 当前角色（default=true 是 Storyden 注入的隐含角色：
           member 角色每个账号都有、不可移除；admin 角色在 admin=true 时注入） */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-ink/60">当前角色：</span>
-        {account.roles.length === 0 && <span className="text-ink/40">无特殊角色</span>}
+        <span className="text-ink/60">{t('当前角色：')}</span>
+        {account.roles.length === 0 && <span className="text-ink/40">{t('无特殊角色')}</span>}
         {account.roles.map((r) => (
           <Badge key={r.id} className="gap-1">
             <span
@@ -184,9 +186,9 @@ export default function AccountActions({ account, roles, isSelf, onChanged }: Ac
               style={{ backgroundColor: ROLE_COLOURS[r.colour] ?? '#94a3b8' }}
             />
             {r.name}
-            {r.default && '（默认）'}
-            {r.id === adminRole?.id && account.admin && '（管理员）'}
-            {r.id === adminRole?.id && !account.admin && '（角色·未置admin）'}
+            {r.default && t('（默认）')}
+            {r.id === adminRole?.id && account.admin && t('（管理员）')}
+            {r.id === adminRole?.id && !account.admin && t('（角色·未置admin）')}
           </Badge>
         ))}
       </div>
@@ -194,7 +196,7 @@ export default function AccountActions({ account, roles, isSelf, onChanged }: Ac
       {/* 角色操作（default 角色不可移除：member 是每个账号的隐含基线角色，
           后端会过滤其分配/移除；admin 角色的分配/移除走「设为/取消管理员」按钮） */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-bold text-ink/50">角色：</span>
+        <span className="text-xs font-medium text-ink/50">{t('角色：')}</span>
         {adminRole && (
           <>
             {hasRole(adminRole.id) ? (
@@ -203,10 +205,10 @@ export default function AccountActions({ account, roles, isSelf, onChanged }: Ac
                 variant="ghost"
                 disabled={busy || isSelf}
                 onClick={revokeAdmin}
-                title={isSelf ? '不能取消自己的管理员权限' : '移除管理员角色与标记'}
+                title={isSelf ? t('不能取消自己的管理员权限') : t('移除管理员角色与标记')}
               >
                 <UserX className="h-3.5 w-3.5" />
-                取消管理员
+                {t('取消管理员')}
               </Button>
             ) : (
               <Button
@@ -214,10 +216,10 @@ export default function AccountActions({ account, roles, isSelf, onChanged }: Ac
                 variant="solid"
                 disabled={busy}
                 onClick={grantAdmin}
-                title="分配管理员角色并置 admin 标记"
+                title={t('分配管理员角色并置 admin 标记')}
               >
                 <ShieldCheck className="h-3.5 w-3.5" />
-                设为管理员
+                {t('设为管理员')}
               </Button>
             )}
           </>
@@ -232,46 +234,48 @@ export default function AccountActions({ account, roles, isSelf, onChanged }: Ac
                   className="inline-block h-2 w-2 rounded-full"
                   style={{ backgroundColor: ROLE_COLOURS[r.colour] ?? '#94a3b8' }}
                 />
-                {owned ? `${r.name}（默认）` : `${r.name}（内置）`}
+                {owned ? t('{name}（默认）', { name: r.name }) : t('{name}（内置）', { name: r.name })}
               </Badge>
             );
           }
           return owned ? (
             <Button key={r.id} size="sm" variant="ghost" disabled={busy} onClick={() => revokeOtherRole(r.id)}>
               <CircleX className="h-3.5 w-3.5" />
-              移除「{r.name}」
+              {t('移除「{name}」', { name: r.name })}
             </Button>
           ) : (
             <Button key={r.id} size="sm" disabled={busy} onClick={() => assignOtherRole(r)}>
               <UserPlus className="h-3.5 w-3.5" />
-              设为「{r.name}」
+              {t('设为「{name}」', { name: r.name })}
             </Button>
           );
         })}
-        {isSelf && <span className="text-xs text-ink/40">（不能对自己执行降级操作）</span>}
+        {isSelf && <span className="text-xs text-ink/40">{t('（不能对自己执行降级操作）')}</span>}
       </div>
 
       {/* 封禁状态 */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-xs font-bold text-ink/50">封禁：</span>
-        <span className={cn('font-bold', account.suspended ? 'text-red-600' : 'text-emerald-600')}>
-          {account.suspended ? `已封禁（${formatDate(account.suspended)}）` : '正常'}
+        <span className="text-xs font-medium text-ink/50">{t('封禁：')}</span>
+        <span className={cn('font-medium', account.suspended ? 'text-red-600' : 'text-emerald-600')}>
+          {account.suspended
+            ? t('已封禁（{date}）', { date: formatDate(account.suspended) })
+            : t('正常')}
         </span>
         <Button
           size="sm"
           variant={account.suspended ? 'default' : 'solid'}
           disabled={busy || isSelf}
           onClick={toggleBan}
-          title={isSelf ? '不能封禁自己' : undefined}
+          title={isSelf ? t('不能封禁自己') : undefined}
         >
           <Ban className="h-3.5 w-3.5" />
-          {account.suspended ? '解封' : '封禁'}
+          {account.suspended ? t('解封') : t('封禁')}
         </Button>
       </div>
 
       {/* 验证状态 */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-xs font-bold text-ink/50">验证状态：</span>
+        <span className="text-xs font-medium text-ink/50">{t('验证状态：')}</span>
         {Object.entries(VERIFIED_LABELS).map(([value, label]) => (
           <Button
             key={value}
@@ -281,7 +285,7 @@ export default function AccountActions({ account, roles, isSelf, onChanged }: Ac
             onClick={() => setVerified(value)}
           >
             {account.verified_status === value && <CircleCheck className="h-3.5 w-3.5" />}
-            {label}
+            {t(label)}
           </Button>
         ))}
       </div>

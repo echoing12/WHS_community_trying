@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Bell, Heart, Loader2, MessageCircle, Reply, UserPlus, AtSign } from 'lucide-react';
 import { Avatar } from '@/components/ui/avatar';
 import { fetchNotifications, markNotificationRead } from '@/lib/api';
+import { useT } from '@/hooks/useLang';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import type { NotificationItem } from '@/lib/api';
 
@@ -41,6 +42,7 @@ export default function NotificationBell() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const t = useT();
 
   const load = useCallback(async (background = false) => {
     if (background) setRefreshing(true);
@@ -88,8 +90,8 @@ export default function NotificationBell() {
       <button
         type="button"
         onClick={toggle}
-        title="通知"
-        className="relative rounded-full p-2 transition-colors hover:bg-butter"
+        title={t('通知')}
+        className="relative rounded-lg p-2 transition-colors hover:bg-ink/5"
       >
         <Bell className={cn('h-4 w-4', refreshing && 'animate-pulse')} />
         {unread > 0 && (
@@ -102,15 +104,15 @@ export default function NotificationBell() {
       {open && (
         <>
           <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-40 mt-2 w-80 rounded-2xl border-2 border-dashed border-ink bg-surface p-2 shadow-hand">
-            <p className="mb-1 px-3 py-1.5 text-sm font-bold text-ink">通知</p>
+          <div className="absolute right-0 z-40 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-ink/10 bg-surface p-2 shadow-hand">
+            <p className="mb-1 px-3 py-1.5 text-sm font-medium text-ink">{t('通知')}</p>
             {loading ? (
               <p className="flex items-center gap-2 px-3 py-6 text-sm text-ink/50">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                加载中…
+                {t('加载中…')}
               </p>
             ) : notifications.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-ink/50">还没有通知</p>
+              <p className="px-3 py-6 text-center text-sm text-ink/50">{t('还没有通知')}</p>
             ) : (
               <div className="max-h-80 space-y-0.5 overflow-y-auto">
                 {notifications.slice(0, 30).map((n) => {
@@ -122,15 +124,15 @@ export default function NotificationBell() {
                       href={notificationHref(n)}
                       onClick={() => handleClick(n)}
                       className={cn(
-                        'flex items-start gap-2.5 rounded-xl px-3 py-2.5 transition-colors hover:bg-butter',
-                        n.status === 'unread' && 'bg-butter/50'
+                        'flex items-start gap-2.5 rounded-lg px-3 py-2.5 transition-colors hover:bg-ink/5',
+                        n.status === 'unread' && 'bg-ink/5'
                       )}
                     >
                       <Avatar name={n.source_name ?? '?'} size="sm" />
                       <span className="min-w-0 flex-1">
                         <span className="block text-sm text-ink">
-                          <span className="font-bold">{n.source_name ?? n.source_handle ?? '有人'}</span>{' '}
-                          {meta.text}
+                          <span className="font-medium">{n.source_name ?? n.source_handle ?? t('有人')}</span>{' '}
+                          {t(meta.text)}
                           {n.item_title ? `：「${n.item_title.slice(0, 20)}${n.item_title.length > 20 ? '…' : ''}」` : ''}
                         </span>
                         <span className="mt-0.5 flex items-center gap-1 text-xs text-ink/50">

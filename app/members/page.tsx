@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/hooks/useLang';
 import { banAccount, fetchAllAdminAccounts, fetchMembers } from '@/lib/api';
 import { scheduleKick } from '@/lib/kicks';
 import { formatDate } from '@/lib/utils';
@@ -18,6 +19,7 @@ const PAGE_SIZE = 20;
 
 export default function MembersPage() {
   const { isAuthenticated, user } = useAuth();
+  const t = useT();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   // 管理员视角：被封禁（已踢出）的成员 handle 集合 —— 用于过滤显示
@@ -69,9 +71,7 @@ export default function MembersPage() {
   const kickMember = async (member: Member) => {
     if (kicking) return;
     const confirmed = window.confirm(
-      `确定将「${member.name}」移出社区吗？\n` +
-        `TA 在 24 小时内无法登录社区，到期自动解封恢复。\n` +
-        `TA 发布的帖子与评论保留。可在管理后台 /admin/members 手动提前解封。`
+      t('确定将「{name}」移出社区吗？\nTA 在 24 小时内无法登录社区，到期自动解封恢复。\nTA 发布的帖子与评论保留。可在管理后台 /admin/members 手动提前解封。', { name: member.name })
     );
     if (!confirmed) return;
     setKicking(member.id);
@@ -84,7 +84,7 @@ export default function MembersPage() {
       setBannedHandles((prev) => new Set(prev).add(member.id));
       void mutate(); // 同步 SWR 缓存（下次翻页/返回时不再显示该成员）
     } catch (err) {
-      window.alert(err instanceof Error && err.message ? err.message : '操作失败，请重试');
+      window.alert(err instanceof Error && err.message ? err.message : t('操作失败，请重试'));
     } finally {
       setKicking(null);
     }
@@ -99,8 +99,8 @@ export default function MembersPage() {
       {/* 页头：标题 + 搜索框 */}
       <section className="hand-card flex flex-col items-center gap-4 p-8 text-center lg:flex-row lg:justify-between lg:text-left">
         <div>
-          <h1 className="hand-title text-2xl text-ink lg:text-3xl">👥 成员列表</h1>
-          <p className="mt-2 text-ink/70">认识社区里的每一位伙伴，点击成员可以查看 TA 的主页。</p>
+          <h1 className="hand-title text-2xl text-ink lg:text-3xl">{t('👥 成员列表')}</h1>
+          <p className="mt-2 text-ink/70">{t('认识社区里的每一位伙伴，点击成员可以查看 TA 的主页。')}</p>
         </div>
         {/* 搜索框：按昵称搜索（客户端过滤，真实 API 无 search 参数） */}
         <div className="relative w-full lg:w-72">
@@ -108,7 +108,7 @@ export default function MembersPage() {
           <Input
             value={search}
             onChange={(e) => handleSearchChange(e.target.value)}
-            placeholder="按昵称搜索成员…"
+            placeholder={t('按昵称搜索成员…')}
             className="pl-11"
           />
         </div>
@@ -117,29 +117,29 @@ export default function MembersPage() {
       {/* 管理员提示：已移出的成员（本页已隐藏，可在管理后台恢复） */}
       {isAdmin && bannedHandles.size > 0 && (
         <div className="hand-card flex flex-wrap items-center justify-center gap-2 p-4 text-center text-sm lg:justify-between lg:text-left">
-          <span className="font-bold text-ink/70">
-            {bannedHandles.size} 名成员已被移出社区（24 小时临时封禁，到期自动恢复）
+          <span className="font-medium text-ink/70">
+            {t('{n} 名成员已被移出社区（24 小时临时封禁，到期自动恢复）', { n: bannedHandles.size })}
           </span>
           <Link href="/admin/members" className="inline-block">
-            <Button size="sm">去管理后台解封</Button>
+            <Button size="sm">{t('去管理后台解封')}</Button>
           </Link>
         </div>
       )}
 
       {/* 成员列表 */}
       {loading && members.length === 0 ? (
-        <p className="py-16 text-center text-ink/50">加载中…</p>
+        <p className="py-16 text-center text-ink/50">{t('加载中…')}</p>
       ) : error && members.length === 0 ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">查看成员列表需要登录，请先登录后重试</p>
+          <p className="font-medium">{t('查看成员列表需要登录，请先登录后重试')}</p>
           <Link href="/auth/login" className="mt-4 inline-block">
-            <Button>去登录</Button>
+            <Button>{t('去登录')}</Button>
           </Link>
         </div>
       ) : visibleMembers.length === 0 ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">没有找到匹配的成员</p>
-          <p className="mt-2 text-sm text-ink/60">换个昵称关键词试试吧</p>
+          <p className="font-medium">{t('没有找到匹配的成员')}</p>
+          <p className="mt-2 text-sm text-ink/60">{t('换个昵称关键词试试吧')}</p>
         </div>
       ) : (
         <>
@@ -156,9 +156,9 @@ export default function MembersPage() {
           </div>
 
           {/* 分页（每页 20 个） */}
-          <div className="flex items-center justify-between rounded-2xl border-2 border-dashed border-ink/30 bg-surface/60 px-4 py-3">
-            <span className="text-sm text-ink/60">共 {shownTotal} 位成员</span>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-ink/10 bg-surface/60 px-4 py-3">
+            <span className="text-sm text-ink/60">{t('共 {n} 位成员', { n: shownTotal })}</span>
+            <div className="ml-auto flex items-center gap-2">
               <Button
                 variant="default"
                 size="sm"
@@ -166,9 +166,9 @@ export default function MembersPage() {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
               >
                 <ChevronLeft className="h-4 w-4" />
-                上一页
+                {t('上一页')}
               </Button>
-              <span className="px-1 text-sm font-bold text-ink/70">
+              <span className="px-1 text-sm font-medium text-ink/70">
                 {page} / {totalPages}
               </span>
               <Button
@@ -177,7 +177,7 @@ export default function MembersPage() {
                 disabled={page >= totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               >
-                下一页
+                {t('下一页')}
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -186,8 +186,8 @@ export default function MembersPage() {
       )}
 
       {/* 免责声明 */}
-      <p className="border-t-2 border-dashed border-ink/20 pt-4 text-center text-xs text-ink/50">
-        成员信息仅供社区内部交流使用，请勿在站外传播；本社区仅供 WHS 患者交流，不构成医疗建议
+      <p className="border-t border-ink/10 pt-4 text-center text-xs text-ink/50">
+        {t('成员信息仅供社区内部交流使用，请勿在站外传播；本社区仅供 WHS 患者交流，不构成医疗建议')}
       </p>
     </div>
   );
@@ -206,6 +206,7 @@ function MemberCard({
   kicking: boolean;
   onKick: (member: Member) => void;
 }) {
+  const t = useT();
   return (
     <article className="hand-card flex items-center gap-4 p-4">
       <Link
@@ -219,26 +220,26 @@ function MemberCard({
           </h3>
           <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-ink/60">
             <Calendar className="h-3.5 w-3.5" />
-            注册于 {member.joined_at ? formatDate(member.joined_at) : '—'}
+            {t('注册于 {date}', { date: member.joined_at ? formatDate(member.joined_at) : '—' })}
           </p>
-          <p className="mt-0.5 text-xs font-bold text-ink/40">
+          <p className="mt-0.5 text-xs font-medium text-ink/40">
             <Heart className="mr-0.5 inline h-3 w-3" />
-            {member.followers ?? 0} 粉丝
+            {t('{n} 粉丝', { n: member.followers ?? 0 })}
           </p>
         </div>
       </Link>
 
       {/* 管理员踢出按钮（按钮不能嵌在 Link 内，故与链接并排） */}
       {canKick && (
-        <div className="flex shrink-0 items-center border-l-2 border-dashed border-ink/20 pl-3">
+        <div className="flex shrink-0 items-center border-l border-ink/10 pl-3">
           <Button
             size="sm"
             disabled={kicking}
             onClick={() => onKick(member)}
-            title="移出社区 24 小时（封禁），到期自动解封"
+            title={t('移出社区 24 小时（封禁），到期自动解封')}
           >
             <UserX className="h-3.5 w-3.5" />
-            {kicking ? '踢出中…' : '踢出'}
+            {kicking ? t('踢出中…') : t('踢出')}
           </Button>
         </div>
       )}

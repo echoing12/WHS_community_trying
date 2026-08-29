@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { ChevronDown, Plus, Tag } from 'lucide-react';
 import { fetchTags } from '@/lib/api';
+import { useT } from '@/hooks/useLang';
 import { cn } from '@/lib/utils';
 
 // 标签多选下拉（无第三方依赖，纯自绘；标签列表来自真实 API：GET /api/tags）
@@ -19,6 +20,7 @@ export default function TagPicker({
   const [open, setOpen] = useState(false);
   const [allTags, setAllTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
+  const t = useT();
 
   // 真实标签列表（GET /api/tags）；接口异常时允许手动输入场景下为空列表
   useEffect(() => {
@@ -58,11 +60,11 @@ export default function TagPicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center gap-2 rounded-2xl border-2 border-dashed border-ink/60 bg-surface px-4 py-2.5 text-left text-sm font-medium transition-colors hover:border-ink"
+        className="flex w-full items-center gap-2 rounded-lg border border-ink/15 bg-surface px-4 py-2.5 text-left text-sm font-medium transition-colors hover:border-ink/30"
       >
         <Tag className="h-4 w-4 shrink-0 text-ink/60" />
         <span className={cn('flex-1 truncate', value.length === 0 && 'text-ink/50')}>
-          {value.length === 0 ? '选择标签（可多选）' : value.join('、')}
+          {value.length === 0 ? t('选择标签（可多选）') : value.join('、')}
         </span>
         <ChevronDown
           className={cn('h-4 w-4 shrink-0 text-ink/60 transition-transform', open && 'rotate-180')}
@@ -70,7 +72,7 @@ export default function TagPicker({
       </button>
 
       {open && (
-        <div className="absolute z-20 mt-2 w-full rounded-2xl border-2 border-dashed border-ink bg-surface p-4 shadow-hand">
+        <div className="absolute z-20 mt-2 w-full rounded-xl border border-ink/10 bg-surface p-4 shadow-hand">
           {/* 新建标签输入框（回车或点「添加」） */}
           <div className="mb-3 flex gap-2">
             <input
@@ -79,22 +81,22 @@ export default function TagPicker({
               onChange={(e) => setNewTag(e.target.value)}
               onKeyDown={handleKeyDown}
               maxLength={30}
-              placeholder="输入新标签名，回车创建"
-              className="min-w-0 flex-1 rounded-xl border-2 border-dashed border-ink/60 bg-surface px-3 py-1.5 text-sm font-medium outline-none transition-colors placeholder:text-ink/40 focus:border-ink"
+              placeholder={t('输入新标签名，回车创建')}
+              className="min-w-0 flex-1 rounded-lg border border-ink/15 bg-surface px-3 py-1.5 text-sm outline-none transition-colors placeholder:text-ink/40 focus:border-ink-solid/50"
             />
             <button
               type="button"
               onClick={addNewTag}
-              className="inline-flex shrink-0 items-center gap-1 rounded-xl border-2 border-dashed border-ink/60 px-3 py-1.5 text-sm font-bold transition-colors hover:border-ink hover:bg-butter"
+              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink/15 px-3 py-1.5 text-sm font-medium transition-colors hover:border-ink/30 hover:bg-ink/5"
             >
               <Plus className="h-3.5 w-3.5" />
-              添加
+              {t('添加')}
             </button>
           </div>
 
-          <p className="mb-3 text-xs font-bold text-ink/50">点击选择已有标签：</p>
+          <p className="mb-3 text-xs font-medium text-ink/50">{t('点击选择已有标签：')}</p>
           {allTags.length === 0 ? (
-            <p className="text-sm text-ink/50">暂无已有标签，输入名称即可创建新标签</p>
+            <p className="text-sm text-ink/50">{t('暂无已有标签，输入名称即可创建新标签')}</p>
           ) : null}
           <div className="flex flex-wrap gap-2">
             {allTags.map((tag) => (
@@ -103,10 +105,10 @@ export default function TagPicker({
                 type="button"
                 onClick={() => toggle(tag)}
                 className={cn(
-                  'rounded-full border-2 border-dashed px-3 py-1 text-sm font-bold transition-colors hover:bg-butter',
+                  'rounded-md border px-3 py-1 text-sm font-medium transition-colors hover:bg-ink/5',
                   value.includes(tag)
-                    ? 'border-ink bg-ink-solid text-on-solid hover:bg-ink-solid'
-                    : 'border-ink/60 text-ink'
+                    ? 'border-ink-solid bg-ink-solid text-on-solid hover:bg-ink-solid'
+                    : 'border-ink/15 text-ink'
                 )}
               >
                 {value.includes(tag) ? '✓ ' : ''}

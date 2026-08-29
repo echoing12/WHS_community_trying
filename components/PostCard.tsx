@@ -6,6 +6,7 @@ import ContentActions from '@/components/ContentActions';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/hooks/useLang';
 import { deletePost } from '@/lib/api';
 import { cn, formatRelativeTime } from '@/lib/utils';
 import type { PostListItem } from '@/types';
@@ -14,6 +15,7 @@ import type { PostListItem } from '@/types';
 // 作者本人可见「编辑 / 删除」操作（编辑 /post/[id]/edit，删除 DELETE /api/threads/{id}）
 export default function PostCard({ post }: { post: PostListItem }) {
   const { user } = useAuth();
+  const t = useT();
   const isAuthor = !!user?.handle && post.author.handle === user.handle;
 
   return (
@@ -24,11 +26,11 @@ export default function PostCard({ post }: { post: PostListItem }) {
             {/* 置顶标记 */}
             {post.is_pinned && (
               <span
-                title="置顶帖"
-                className="mr-2 inline-flex translate-y-[-2px] items-center gap-1 rounded-full border-2 border-dashed border-ink bg-butter px-2 py-0.5 text-xs text-ink"
+                title={t('置顶帖')}
+                className="mr-2 inline-flex translate-y-[-2px] items-center gap-1 rounded-md border border-ink/10 bg-butter px-2 py-0.5 text-xs font-medium text-ink"
               >
                 <Pin className="h-3 w-3" />
-                置顶
+                {t('置顶')}
               </span>
             )}
             {post.title}
@@ -51,10 +53,10 @@ export default function PostCard({ post }: { post: PostListItem }) {
           ))}
         </div>
 
-        {/* 作者信息 + 回复数 + 点赞数 + 收藏标记 */}
-        <div className="mt-4 flex items-center gap-3 text-sm text-ink/70">
+        {/* 作者信息 + 回复数 + 点赞数 + 收藏标记（窄屏允许换行，昵称超长截断） */}
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink/70">
           <Avatar name={post.author.name} src={post.author.avatar} size="sm" />
-          <span className="font-bold">{post.author.name}</span>
+          <span className="max-w-[12rem] truncate font-bold">{post.author.name}</span>
           <span className="text-ink/40">·</span>
           <span>{formatRelativeTime(post.created_at)}</span>
           <span className="ml-auto inline-flex items-center gap-3 font-bold text-ink/60">
@@ -65,7 +67,7 @@ export default function PostCard({ post }: { post: PostListItem }) {
             {/* 收藏标记（已收藏时显示实心图标） */}
             <span
               className={cn('inline-flex items-center gap-1.5', post.is_collected && 'text-ink')}
-              title={post.is_collected ? '已收藏' : '未收藏'}
+              title={post.is_collected ? t('已收藏') : t('未收藏')}
             >
               <Bookmark className={cn('h-4 w-4', post.is_collected && 'fill-ink')} />
             </span>

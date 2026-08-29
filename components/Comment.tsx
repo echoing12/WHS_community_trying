@@ -6,6 +6,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/hooks/useLang';
 import { formatRelativeTime } from '@/lib/utils';
 import type { Comment as CommentData } from '@/types';
 
@@ -22,6 +23,7 @@ export default function Comment({
 }) {
   // 基于Storyden官方规格: 「回复」属写操作，Guest（未登录）隐藏
   const { isAuthenticated } = useAuth();
+  const t = useT();
   const [replying, setReplying] = useState(false);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
@@ -43,10 +45,10 @@ export default function Comment({
 
   return (
     <div className="space-y-3">
-      <div className="rounded-2xl border-2 border-dashed border-ink/40 bg-surface/70 p-4">
+      <div className="rounded-xl border border-ink/10 bg-surface/70 p-4">
         <div className="flex items-center gap-2 text-sm">
           <Avatar name={comment.author} size="sm" />
-          <span className="font-bold">{comment.author}</span>
+          <span className="font-medium">{comment.author}</span>
           <span className="text-ink/40">·</span>
           <span className="text-ink/40">{formatRelativeTime(comment.created_at)}</span>
         </div>
@@ -56,10 +58,10 @@ export default function Comment({
         {isAuthenticated && (
           <button
             onClick={() => setReplying((v) => !v)}
-            className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-ink/60 transition-colors hover:text-ink"
+            className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-ink/60 transition-colors hover:text-ink"
           >
             <MessageSquarePlus className="h-3.5 w-3.5" />
-            回复
+            {t('回复')}
           </button>
         )}
 
@@ -68,14 +70,14 @@ export default function Comment({
             <Input
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
-              placeholder={`回复 ${comment.author}…`}
+              placeholder={t('回复 {name}…', { name: comment.author })}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') submitReply();
               }}
               disabled={sending}
             />
             <Button size="sm" onClick={submitReply} disabled={sending}>
-              发送
+              {t('发送')}
             </Button>
           </div>
         )}
@@ -83,7 +85,7 @@ export default function Comment({
 
       {/* 嵌套子回复 */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="ml-4 space-y-3 border-l-2 border-dashed border-ink/20 pl-4 lg:ml-8 lg:pl-6">
+        <div className="ml-4 space-y-3 border-l border-ink/10 pl-4 lg:ml-8 lg:pl-6">
           {comment.replies.map((reply) => (
             <Comment key={reply.id} comment={reply} onReply={onReply} threadId={threadId} />
           ))}

@@ -9,11 +9,13 @@ import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { fetchTagDetail } from '@/lib/api';
+import { useT } from '@/hooks/useLang';
 import { formatRelativeTime } from '@/lib/utils';
 import type { LibraryNode, LinkItem } from '@/types';
 
 export default function TagDetailPage() {
   const params = useParams();
+  const t = useT();
   const name = Array.isArray(params.name) ? params.name[0] : params.name;
   const decoded = name ? decodeURIComponent(name) : '';
 
@@ -25,17 +27,19 @@ export default function TagDetailPage() {
   const loading = isLoading && !detail;
 
   if (loading) {
-    return <p className="py-16 text-center text-ink/50">加载中…</p>;
+    return <p className="py-16 text-center text-ink/50">{t('加载中…')}</p>;
   }
 
   if (!detail) {
     return (
       <div className="hand-card p-10 text-center">
-        <p className="font-bold">{error ? '标签内容加载失败，请检查网络后重试' : '标签不存在'}</p>
+        <p className="font-medium">
+          {error ? t('标签内容加载失败，请检查网络后重试') : t('标签不存在')}
+        </p>
         <div className="mt-4 flex justify-center gap-3">
-          {error ? <Button onClick={() => mutate()}>重试</Button> : null}
+          {error ? <Button onClick={() => mutate()}>{t('重试')}</Button> : null}
           <Link href="/tags" className="inline-block">
-            <Button>返回标签列表</Button>
+            <Button>{t('返回标签列表')}</Button>
           </Link>
         </div>
       </div>
@@ -57,22 +61,22 @@ export default function TagDetailPage() {
             detail.tag.links_count > 0) && (
             <span className="inline-flex items-center gap-1">
               <MessageCircle className="h-4 w-4" />
-              帖子 {detail.tag.posts_count} · <BookOpen className="h-4 w-4" />
-              知识库 {detail.tag.library_count} · <LinkIcon className="h-4 w-4" />
-              链接 {detail.tag.links_count}
+              {t('帖子')} {detail.tag.posts_count} · <BookOpen className="h-4 w-4" />
+              {t('知识库')} {detail.tag.library_count} · <LinkIcon className="h-4 w-4" />
+              {t('链接')} {detail.tag.links_count}
             </span>
           )}
-          <span>共使用 {detail.tag.count} 次</span>
+          <span>{t('共使用 {n} 次', { n: detail.tag.count })}</span>
         </p>
       </section>
 
       {/* 帖子（真实 API：GET /api/tags/{name} 的 items 中 kind=thread） */}
       <section className="space-y-4">
         <h2 className="hand-title text-xl text-ink">
-          帖子 <span className="text-sm text-ink/50">（{detail.posts.length}）</span>
+          {t('帖子')} <span className="text-sm text-ink/50">{t('（{n}）', { n: detail.posts.length })}</span>
         </h2>
         {detail.posts.length === 0 ? (
-          <EmptyCard text="这个标签下还没有帖子" />
+          <EmptyCard text={t('这个标签下还没有帖子')} />
         ) : (
           <div className="space-y-4">
             {detail.posts.map((post) => (
@@ -85,10 +89,10 @@ export default function TagDetailPage() {
       {/* 知识库页面（items 中 kind=node） */}
       <section className="space-y-4">
         <h2 className="hand-title text-xl text-ink">
-          知识库页面 <span className="text-sm text-ink/50">（{detail.library_pages.length}）</span>
+          {t('知识库页面')} <span className="text-sm text-ink/50">{t('（{n}）', { n: detail.library_pages.length })}</span>
         </h2>
         {detail.library_pages.length === 0 ? (
-          <EmptyCard text="这个标签下还没有知识库页面" />
+          <EmptyCard text={t('这个标签下还没有知识库页面')} />
         ) : (
           <div className="space-y-4">
             {detail.library_pages.map((page) => (
@@ -101,10 +105,10 @@ export default function TagDetailPage() {
       {/* 链接（items 中 kind=link） */}
       <section className="space-y-4">
         <h2 className="hand-title text-xl text-ink">
-          链接 <span className="text-sm text-ink/50">（{detail.links.length}）</span>
+          {t('链接')} <span className="text-sm text-ink/50">{t('（{n}）', { n: detail.links.length })}</span>
         </h2>
         {detail.links.length === 0 ? (
-          <EmptyCard text="这个标签下还没有链接" />
+          <EmptyCard text={t('这个标签下还没有链接')} />
         ) : (
           <div className="space-y-4">
             {detail.links.map((link) => (
@@ -115,8 +119,8 @@ export default function TagDetailPage() {
       </section>
 
       {/* 免责声明 */}
-      <p className="border-t-2 border-dashed border-ink/20 pt-4 text-center text-xs text-ink/50">
-        本社区仅供 WHS 患者交流，不构成医疗建议
+      <p className="border-t border-ink/10 pt-4 text-center text-xs text-ink/50">
+        {t('本论坛仅供 WHS 患者交流，不构成医疗建议')}
       </p>
     </div>
   );
@@ -127,13 +131,14 @@ function EmptyCard({ text }: { text: string }) {
   return (
     <div className="hand-card flex flex-col items-center gap-2 p-8 text-center">
       <SearchX className="h-6 w-6 text-ink/40" />
-      <p className="text-sm font-bold text-ink/60">{text}</p>
+      <p className="text-sm font-medium text-ink/60">{text}</p>
     </div>
   );
 }
 
 // 知识库页面卡片（列表页复用样式）
 function LibraryCard({ page }: { page: LibraryNode }) {
+  const t = useT();
   return (
     <Link href={`/library/${page.slug}`} className="group block">
       <article className="hand-card p-5 transition-transform duration-200 group-hover:-translate-y-0.5">
@@ -142,12 +147,12 @@ function LibraryCard({ page }: { page: LibraryNode }) {
           <h3 className="hand-title min-w-0 flex-1 truncate text-lg text-ink group-hover:underline">
             {page.title}
           </h3>
-          <Badge variant="butter">知识库</Badge>
+          <Badge variant="butter">{t('知识库')}</Badge>
         </div>
         {page.summary && <p className="mt-2 line-clamp-2 text-sm text-ink/60">{page.summary}</p>}
         <div className="mt-3 flex items-center gap-3 text-sm text-ink/70">
           <Avatar name={page.author.name} src={page.author.avatar} size="sm" />
-          <span className="font-bold">{page.author.name}</span>
+          <span className="font-medium">{page.author.name}</span>
           <span className="text-ink/40">·</span>
           <span>{formatRelativeTime(page.created_at)}</span>
         </div>
@@ -158,6 +163,7 @@ function LibraryCard({ page }: { page: LibraryNode }) {
 
 // 链接卡片（列表页复用样式；真实 API 的 Link 无作者/时间字段，仅在接口提供时展示）
 function LinkCard({ link }: { link: LinkItem }) {
+  const t = useT();
   return (
     <a href={link.url} target="_blank" rel="noopener noreferrer" className="group block">
       <article className="hand-card p-5 transition-transform duration-200 group-hover:-translate-y-0.5">
@@ -166,14 +172,14 @@ function LinkCard({ link }: { link: LinkItem }) {
           <h3 className="hand-title min-w-0 flex-1 truncate text-lg text-ink group-hover:underline">
             {link.title}
           </h3>
-          <Badge>链接</Badge>
+          <Badge>{t('链接')}</Badge>
         </div>
         <p className="mt-2 line-clamp-2 text-sm text-ink/60">{link.description}</p>
         <div className="mt-3 flex items-center gap-3 text-sm text-ink/70">
-          {link.author.name && link.author.name !== '社区成员' && (
+          {link.author.name && link.author.name !== t('社区成员') && (
             <>
               <Avatar name={link.author.name} src={link.author.avatar} size="sm" />
-              <span className="font-bold">{link.author.name}</span>
+              <span className="font-medium">{link.author.name}</span>
               <span className="text-ink/40">·</span>
             </>
           )}

@@ -46,7 +46,7 @@ export default function MarkdownView({ content }: { content: string }) {
                   src={src}
                   controls
                   preload="metadata"
-                  className="my-3 w-full max-w-2xl rounded-2xl border-2 border-dashed border-ink/30 bg-ink/5"
+                  className="my-3 w-full max-w-2xl rounded-xl border border-ink/10 bg-ink/5"
                 />
               );
             }
@@ -57,7 +57,7 @@ export default function MarkdownView({ content }: { content: string }) {
                 alt={alt ?? ''}
                 loading="lazy"
                 decoding="async"
-                className="my-3 w-full max-w-2xl rounded-2xl border-2 border-dashed border-ink/30 bg-ink/5"
+                className="my-3 w-full max-w-2xl rounded-xl border border-ink/10 bg-ink/5"
               />
             );
           },

@@ -15,12 +15,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/hooks/useLang';
 import { createReply, deletePost, fetchPostDetail, togglePostLike } from '@/lib/api';
 import { cn, formatRelativeTime } from '@/lib/utils';
 
 export default function PostDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const t = useT();
   const id = Array.isArray(params.id) ? params.id[0] : params.id;
 
   // 基于Storyden官方规格: 评论 / 点赞 / 收藏等写操作按登录状态动态显示
@@ -85,21 +87,23 @@ export default function PostDetailPage() {
   };
 
   if (detailLoading && !post) {
-    return <p className="py-16 text-center text-ink/50">加载中…</p>;
+    return <p className="py-16 text-center text-ink/50">{t('加载中…')}</p>;
   }
 
   if (!post) {
     return (
       <div className="hand-card p-10 text-center">
-        <p className="font-bold">{error ? '帖子加载失败，请检查网络后重试' : '帖子不存在或已被删除'}</p>
+        <p className="font-medium">
+          {error ? t('帖子加载失败，请检查网络后重试') : t('帖子不存在或已被删除')}
+        </p>
         <div className="mt-4 flex justify-center gap-3">
           {error ? (
-            <Button onClick={() => mutate()}>重试</Button>
+            <Button onClick={() => mutate()}>{t('重试')}</Button>
           ) : null}
           <Link href="/" className="inline-block">
             <Button variant="default">
               <ArrowLeft className="h-4 w-4" />
-              返回首页
+              {t('返回首页')}
             </Button>
           </Link>
         </div>
@@ -112,10 +116,10 @@ export default function PostDetailPage() {
       {/* 返回 */}
       <button
         onClick={() => router.back()}
-        className="inline-flex items-center gap-1.5 text-sm font-bold text-ink/60 transition-colors hover:text-ink"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink/60 transition-colors hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />
-        返回
+        {t('返回')}
       </button>
 
       {/* 帖子主体 */}
@@ -124,11 +128,11 @@ export default function PostDetailPage() {
           <h1 className="hand-title flex-1 text-2xl text-ink lg:text-3xl">
             {post.is_pinned && (
               <span
-                title="置顶帖"
-                className="mr-2 inline-flex translate-y-[-2px] items-center gap-1 rounded-full border-2 border-dashed border-ink bg-butter px-2 py-0.5 text-sm text-ink"
+                title={t('置顶帖')}
+                className="mr-2 inline-flex translate-y-[-2px] items-center gap-1 rounded-md border border-ink/10 bg-butter px-2 py-0.5 text-sm font-medium text-ink"
               >
                 <Pin className="h-3.5 w-3.5" />
-                置顶
+                {t('置顶')}
               </span>
             )}
             {post.title}
@@ -138,15 +142,15 @@ export default function PostDetailPage() {
             isAuthor={!!user?.handle && post.author.handle === user.handle}
             editHref={`/post/${post.id}/edit`}
             onDelete={() => deletePost(post.id)}
-            deletePrompt="确定要删除这篇帖子吗？删除后无法恢复。"
+            deletePrompt={t('确定要删除这篇帖子吗？删除后无法恢复。')}
           />
         </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3 text-sm text-ink/70">
           <Avatar name={post.author.name} src={post.author.avatar} />
           <div>
-            <p className="font-bold">{post.author.name}</p>
-            <p className="text-xs text-ink/50">{post.author.bio || 'TA 还没有填写简介'}</p>
+            <p className="font-medium">{post.author.name}</p>
+            <p className="text-xs text-ink/50">{post.author.bio || t('TA 还没有填写简介')}</p>
           </div>
           <span className="text-ink/40">·</span>
           <span>{formatRelativeTime(post.created_at)}</span>
@@ -159,29 +163,29 @@ export default function PostDetailPage() {
         </div>
 
         {/* Markdown 正文（真实 API 的 body 为 HTML，已在 lib/api.ts 转为 Markdown） */}
-        <div className="mt-6 border-t-2 border-dashed border-ink/20 pt-6">
+        <div className="mt-6 border-t border-ink/10 pt-6">
           <MarkdownView content={post.content} />
         </div>
 
         {/* 点赞 / 收藏 */}
         {isLoading ? null : isAuthenticated ? (
-          <div className="mt-6 flex items-center gap-3 border-t-2 border-dashed border-ink/20 pt-6">
+          <div className="mt-6 flex items-center gap-3 border-t border-ink/10 pt-6">
             <button
               onClick={toggleLike}
               className={cn(
-                'inline-flex items-center gap-2 rounded-full border-2 border-dashed border-ink/60 px-5 py-2 text-sm font-bold transition-colors hover:bg-butter active:scale-95',
-                liked && 'border-ink bg-butter'
+                'inline-flex items-center gap-2 rounded-lg border border-ink/15 px-5 py-2 text-sm font-medium transition-colors hover:border-ink/30 hover:bg-ink/5',
+                liked && 'border-ink-solid bg-ink-solid/10 text-ink'
               )}
             >
               <Heart
                 key={likePop} // 点击时重新挂载，重放弹跳动画
                 className={cn(
                   'h-4 w-4 transition-transform',
-                  liked && 'fill-ink',
+                  liked && 'fill-ink-solid text-ink-solid',
                   likePop > 0 && 'animate-like-pop'
                 )}
               />
-              {liked ? '已点赞' : '点赞'}
+              {liked ? t('已点赞') : t('点赞')}
               <span className="text-ink/60">
                 {post.like_count + (liked ? 1 : 0) - (post.is_liked ? 1 : 0)}
               </span>
@@ -195,7 +199,7 @@ export default function PostDetailPage() {
           </div>
         ) : (
           // 基于Storyden官方规格: Guest（未登录）隐藏写操作按钮，显示登录提示
-          <div className="mt-6 flex items-center gap-3 border-t-2 border-dashed border-ink/20 pt-6">
+          <div className="mt-6 flex items-center gap-3 border-t border-ink/10 pt-6">
             <LoginHint redirect={`/post/${post.id}`} />
           </div>
         )}
@@ -204,7 +208,10 @@ export default function PostDetailPage() {
       {/* 评论区 */}
       <section className="space-y-4">
         <h2 className="hand-title text-xl text-ink">
-          评论 <span className="text-sm text-ink/50">（{post.reply_count ?? post.replies.length}）</span>
+          {t('评论')}{' '}
+          <span className="text-sm text-ink/50">
+            {t('（{n}）', { n: post.reply_count ?? post.replies.length })}
+          </span>
         </h2>
 
         {/* 发表评论 */}
@@ -213,32 +220,32 @@ export default function PostDetailPage() {
             <Textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
-              placeholder="写下你的想法，给 TA 一点鼓励…"
+              placeholder={t('写下你的想法，给 TA 一点鼓励…')}
               rows={3}
             />
             <div className="mt-3 flex justify-end">
               <Button onClick={submitComment} disabled={sending || !newComment.trim()}>
                 <Send className="h-4 w-4" />
-                发表评论
+                {t('发表评论')}
               </Button>
             </div>
           </div>
         ) : (
           // 基于Storyden官方规格: 未登录时评论区显示「请登录后参与讨论」
           <div className="hand-card p-5 text-center">
-            <p className="text-sm font-bold text-ink/60">请登录后参与讨论</p>
+            <p className="text-sm font-medium text-ink/60">{t('请登录后参与讨论')}</p>
             <Link
               href={`/auth/login?redirect=${encodeURIComponent(`/post/${post.id}`)}`}
               className="mt-3 inline-block"
             >
-              <Button size="sm">去登录</Button>
+              <Button size="sm">{t('去登录')}</Button>
             </Link>
           </div>
         )}
 
         {/* 评论列表（支持嵌套回复） */}
         {post.replies.length === 0 ? (
-          <p className="py-8 text-center text-ink/50">还没有评论，来抢沙发吧～</p>
+          <p className="py-8 text-center text-ink/50">{t('还没有评论，来抢沙发吧～')}</p>
         ) : (
           <div className="space-y-4">
             {post.replies.map((comment) => (
@@ -249,8 +256,8 @@ export default function PostDetailPage() {
       </section>
 
       {/* 免责声明 */}
-      <p className="border-t-2 border-dashed border-ink/20 pt-4 text-center text-xs text-ink/50">
-        本论坛仅供 WHS 患者交流，不构成医疗建议
+      <p className="border-t border-ink/10 pt-4 text-center text-xs text-ink/50">
+        {t('本论坛仅供 WHS 患者交流，不构成医疗建议')}
       </p>
     </article>
   );

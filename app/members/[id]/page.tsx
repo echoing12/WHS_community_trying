@@ -9,6 +9,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/hooks/useLang';
 import {
   PermissionDeniedError,
   fetchAdminAccounts,
@@ -24,6 +25,7 @@ import type { Member } from '@/types';
 export default function MemberDetailPage() {
   const params = useParams<{ id: string }>();
   const { isAuthenticated, user } = useAuth();
+  const t = useT();
   const [member, setMember] = useState<Member | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -105,16 +107,16 @@ export default function MemberDetailPage() {
   };
 
   if (loading) {
-    return <p className="py-16 text-center text-ink/50">加载中…</p>;
+    return <p className="py-16 text-center text-ink/50">{t('加载中…')}</p>;
   }
 
   if (needLogin) {
     return (
       <div className="hand-card p-10 text-center">
-        <p className="font-bold">查看成员主页需要登录</p>
-        <p className="mt-2 text-sm text-ink/60">登录后即可浏览社区成员信息</p>
+        <p className="font-medium">{t('查看成员主页需要登录')}</p>
+        <p className="mt-2 text-sm text-ink/60">{t('登录后即可浏览社区成员信息')}</p>
         <Link href="/auth/login" className="mt-4 inline-block">
-          <Button>去登录</Button>
+          <Button>{t('去登录')}</Button>
         </Link>
       </div>
     );
@@ -123,10 +125,10 @@ export default function MemberDetailPage() {
   if (notFound || !member) {
     return (
       <div className="hand-card p-10 text-center">
-        <p className="font-bold">成员不存在或已注销</p>
-        <p className="mt-2 text-sm text-ink/60">TA 可能已经离开了社区</p>
+        <p className="font-medium">{t('成员不存在或已注销')}</p>
+        <p className="mt-2 text-sm text-ink/60">{t('TA 可能已经离开了社区')}</p>
         <Link href="/members" className="mt-4 inline-block">
-          <Button>返回成员列表</Button>
+          <Button>{t('返回成员列表')}</Button>
         </Link>
       </div>
     );
@@ -141,10 +143,10 @@ export default function MemberDetailPage() {
       {/* 返回成员列表 */}
       <Link
         href="/members"
-        className="inline-flex items-center gap-1.5 text-sm font-bold text-ink/70 transition-colors hover:text-ink"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-ink/70 transition-colors hover:text-ink"
       >
         <ArrowLeft className="h-4 w-4" />
-        返回成员列表
+        {t('返回成员列表')}
       </Link>
 
       {/* 成员信息卡片 */}
@@ -155,19 +157,19 @@ export default function MemberDetailPage() {
             <div className="flex flex-wrap items-center justify-center gap-3 sm:justify-start">
               <h1 className="hand-title text-2xl text-ink">{member.name}</h1>
               {/* 已移出社区（管理员封禁，soft delete；详情接口返回 deletedAt，到期自动解封后消失） */}
-              {member.deleted_at && <Badge variant="ink">已移出社区（封禁中）</Badge>}
+              {member.deleted_at && <Badge variant="ink">{t('已移出社区（封禁中）')}</Badge>}
               {/* 关注按钮（自己 / 未登录时不显示） */}
               {canFollow && (
                 <Button size="sm" onClick={handleFollow} disabled={toggling}>
                   {following ? (
                     <>
                       <UserMinus className="h-4 w-4" />
-                      取关
+                      {t('取关')}
                     </>
                   ) : (
                     <>
                       <UserPlus className="h-4 w-4" />
-                      关注
+                      {t('关注')}
                     </>
                   )}
                 </Button>
@@ -175,7 +177,7 @@ export default function MemberDetailPage() {
               {isSelf && (
                 <Link href="/profile">
                   <Button size="sm" variant="solid">
-                    编辑我的资料
+                    {t('编辑我的资料')}
                   </Button>
                 </Link>
               )}
@@ -183,17 +185,17 @@ export default function MemberDetailPage() {
 
             <p className="mt-2 inline-flex items-center gap-1.5 text-sm text-ink/60">
               <Calendar className="h-4 w-4" />
-              注册于 {member.joined_at ? formatDate(member.joined_at) : '—'}
+              {t('注册于 {date}', { date: member.joined_at ? formatDate(member.joined_at) : '—' })}
             </p>
 
             {/* 粉丝 / 关注计数 */}
-            <div className="mt-3 flex flex-wrap justify-center gap-4 text-sm font-bold text-ink/70 sm:justify-start">
+            <div className="mt-3 flex flex-wrap justify-center gap-4 text-sm font-medium text-ink/70 sm:justify-start">
               <Link href={`/members/${member.id}/followers`} className="transition-colors hover:text-ink">
                 <Heart className="mr-1 inline h-4 w-4" />
-                {member.followers ?? 0} 粉丝
+                {t('{n} 粉丝', { n: member.followers ?? 0 })}
               </Link>
               <Link href={`/members/${member.id}/following`} className="transition-colors hover:text-ink">
-                关注 {member.following ?? 0}
+                {t('关注 {n}', { n: member.following ?? 0 })}
               </Link>
             </div>
 
@@ -237,7 +239,7 @@ export default function MemberDetailPage() {
       {/* 权限管理卡片（仅管理员可见；角色/封禁/验证状态操作，详见 AccountActions） */}
       {isAdmin && (
         <section className="space-y-4">
-          {adminLoading && <p className="text-center text-sm text-ink/50">加载权限信息…</p>}
+          {adminLoading && <p className="text-center text-sm text-ink/50">{t('加载权限信息…')}</p>}
           {!adminLoading && adminView && (
             <AccountActions
               account={adminView}
@@ -247,16 +249,16 @@ export default function MemberDetailPage() {
             />
           )}
           {!adminLoading && !adminView && (
-            <p className="rounded-2xl border-2 border-dashed border-ink/30 bg-surface/60 p-4 text-center text-sm text-ink/50">
-              未找到该账号的管理信息（账号可能已注销）
+            <p className="rounded-xl border border-ink/10 bg-surface/60 p-4 text-center text-sm text-ink/50">
+              {t('未找到该账号的管理信息（账号可能已注销）')}
             </p>
           )}
         </section>
       )}
 
       {/* 免责声明 */}
-      <p className="border-t-2 border-dashed border-ink/20 pt-4 text-center text-xs text-ink/50">
-        成员信息仅供社区内部交流使用，请勿在站外传播；本社区仅供 WHS 患者交流，不构成医疗建议
+      <p className="border-t border-ink/10 pt-4 text-center text-xs text-ink/50">
+        {t('成员信息仅供社区内部交流使用，请勿在站外传播；本社区仅供 WHS 患者交流，不构成医疗建议')}
       </p>
     </div>
   );

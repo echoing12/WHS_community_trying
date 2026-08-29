@@ -17,6 +17,7 @@ import {
   type StorydenAdminAccount,
   type StorydenRole,
 } from './shared';
+import { tr } from '@/lib/i18n';
 
 // Storyden 内置角色 id（源码固定常量，不可更改）：
 // member 角色（m0）注入到每个账号、guest（g0）与 admin（a00）按需注入；
@@ -67,14 +68,14 @@ function accountToAdminView(a: StorydenAdminAccount): AdminAccountView {
   return {
     id: a.id ?? '',
     handle: a.handle ?? '',
-    name: a.name || a.handle || '未知用户',
+    name: a.name || a.handle || tr('未知用户'),
     joined: a.joined ?? a.createdAt,
     suspended: a.suspended,
     verified_status: a.verified_status ?? 'none',
     admin: a.admin ?? false,
     roles: (a.roles ?? []).map((r) => ({
       id: r.id ?? '',
-      name: r.name ?? '未知角色',
+      name: r.name ?? tr('未知角色'),
       colour: r.colour ?? '',
       default: r.default ?? false,
     })),

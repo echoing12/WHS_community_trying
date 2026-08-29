@@ -8,12 +8,14 @@ import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/hooks/useLang';
 import { fetchLinks } from '@/lib/api';
 import { formatRelativeTime } from '@/lib/utils';
 
 export default function LinksPage() {
   // 基于Storyden官方规格: 提交链接属写操作，按登录状态动态显示
   const { isAuthenticated, isLoading } = useAuth();
+  const t = useT();
   // 链接列表：SWR 缓存（60 秒内不重复请求）
   const { data: links = [], error, isLoading: linksLoading, mutate } = useSWR(
     'links',
@@ -27,16 +29,16 @@ export default function LinksPage() {
       {/* 页头 */}
       <section className="hand-card flex flex-col items-center gap-4 p-8 text-center lg:flex-row lg:justify-between lg:text-left">
         <div>
-          <h1 className="hand-title text-2xl text-ink lg:text-3xl">🔗 链接分享</h1>
+          <h1 className="hand-title text-2xl text-ink lg:text-3xl">{t('🔗 链接分享')}</h1>
           <p className="mt-2 text-ink/70">
-            收藏值得信赖的外部资料：基金会官网、研究文献、照护指南。分享前请确保内容安全可靠。
+            {t('收藏值得信赖的外部资料：基金会官网、研究文献、照护指南。分享前请确保内容安全可靠。')}
           </p>
         </div>
         {!isLoading && (isAuthenticated ? (
           <Link href="/links/submit">
             <Button>
               <Plus className="h-4 w-4" />
-              提交链接
+              {t('提交链接')}
             </Button>
           </Link>
         ) : (
@@ -46,21 +48,21 @@ export default function LinksPage() {
 
       {/* 链接列表 */}
       {loading ? (
-        <p className="py-16 text-center text-ink/50">加载中…</p>
+        <p className="py-16 text-center text-ink/50">{t('加载中…')}</p>
       ) : error ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">链接加载失败，请检查网络后重试</p>
+          <p className="font-medium">{t('链接加载失败，请检查网络后重试')}</p>
           <Button className="mt-4" onClick={() => mutate()}>
-            重试
+            {t('重试')}
           </Button>
         </div>
       ) : links.length === 0 ? (
         <div className="hand-card p-10 text-center">
-          <p className="font-bold">还没有人分享链接</p>
-          <p className="mt-2 text-sm text-ink/60">来分享第一个有价值的资料吧！</p>
+          <p className="font-medium">{t('还没有人分享链接')}</p>
+          <p className="mt-2 text-sm text-ink/60">{t('来分享第一个有价值的资料吧！')}</p>
           {!isLoading && (isAuthenticated ? (
             <Link href="/links/submit" className="mt-4 inline-block">
-              <Button>去分享</Button>
+              <Button>{t('去分享')}</Button>
             </Link>
           ) : (
             <div className="mt-4">
@@ -78,10 +80,10 @@ export default function LinksPage() {
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  title={`打开 ${link.domain}`}
+                  title={t('打开 {domain}', { domain: link.domain })}
                   className="shrink-0"
                 >
-                  <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed border-ink/50 bg-butter/60 transition-transform hover:-translate-y-0.5 sm:h-24 sm:w-36">
+                  <div className="flex h-20 w-28 items-center justify-center overflow-hidden rounded-lg border border-ink/10 bg-butter/50 transition-transform hover:-translate-y-0.5 sm:h-24 sm:w-36">
                     {link.image ? (
                       // 真实接口返回 OG 图片（primary_image.path）
                       <img src={link.image} alt={link.title} className="h-full w-full object-cover" />
@@ -122,10 +124,10 @@ export default function LinksPage() {
 
                   <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-ink/60">
                     {/* 真实 API 的 Link 没有作者/发布时间字段，仅在接口提供时展示 */}
-                    {link.author.name && link.author.name !== '社区成员' && (
+                    {link.author.name && link.author.name !== t('社区成员') && (
                       <>
                         <Avatar name={link.author.name} src={link.author.avatar} size="sm" />
-                        <span className="font-bold">{link.author.name}</span>
+                        <span className="font-medium">{link.author.name}</span>
                         <span className="text-ink/40">·</span>
                       </>
                     )}
@@ -147,8 +149,8 @@ export default function LinksPage() {
       )}
 
       {/* 免责声明 */}
-      <p className="border-t-2 border-dashed border-ink/20 pt-4 text-center text-xs text-ink/50">
-        链接内容来自第三方网站，社区不对其准确性负责；本社区仅供 WHS 患者交流，不构成医疗建议
+      <p className="border-t border-ink/10 pt-4 text-center text-xs text-ink/50">
+        {t('链接内容来自第三方网站，社区不对其准确性负责；本社区仅供 WHS 患者交流，不构成医疗建议')}
       </p>
     </div>
   );

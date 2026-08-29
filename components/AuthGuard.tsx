@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import { useT } from '@/hooks/useLang';
 
 // ============ 客户端路由守卫（基于Storyden官方规格） ============
 // - middleware.ts 在服务端按 Cookie 做首道拦截（快速、不请求 API）
@@ -11,6 +12,7 @@ import { useAuth } from '@/hooks/useAuth';
 // - 未登录 → 跳转 /auth/login?redirect=当前路径（登录后跳回）
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth();
+  const t = useT();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -21,7 +23,7 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   }, [isLoading, isAuthenticated, pathname, router]);
 
   if (isLoading) {
-    return <p className="py-16 text-center text-ink/50">加载中…</p>;
+    return <p className="py-16 text-center text-ink/50">{t('加载中…')}</p>;
   }
 
   if (!isAuthenticated) return null;
