@@ -13,6 +13,7 @@ import {
   Plus,
   X,
 } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import LanguageToggle from '@/components/LanguageToggle';
 import NotificationBell from '@/components/NotificationBell';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -231,9 +232,14 @@ export default function Header() {
         </div>
       </div>
 
-      {/* ============ 移动端抽屉菜单（<lg 显示） ============ */}
-      {mobileOpen && (
-        <>
+      {/* ============ 移动端抽屉菜单（<lg 显示） ============
+          修复：抽屉用 createPortal 挂载到 <body>。
+          <header> 带 backdrop-blur（backdrop-filter），会给 fixed 后代建立包含块，
+          导致遮罩/面板被限制在顶栏高度内（手机端打开菜单时抽屉被顶栏遮住/裁切）。
+          挂到 body 后 fixed 重新相对视口定位，抽屉恢复全屏高度。 */}
+      {mobileOpen &&
+        createPortal(
+          <>
           {/* 遮罩：点击关闭 */}
           <div
             className="animate-fade-in fixed inset-0 z-40 bg-ink/30 backdrop-blur-sm lg:hidden"
@@ -352,8 +358,9 @@ export default function Header() {
               </div>
             </div>
           </div>
-        </>
-      )}
+          </>,
+          document.body
+        )}
     </header>
   );
 }

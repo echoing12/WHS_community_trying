@@ -67,6 +67,21 @@ export default function NotificationBell() {
     };
   }, [load]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 点击组件外部关闭下拉（不用 fixed inset-0 遮罩：NotificationBell 位于 <header> 内，
+  // header 的 backdrop-blur 会把 fixed 遮罩限制在顶栏高度内，导致点页面其他区域关不掉）
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [open]);
+
   // 打开下拉时刷新一次
   const toggle = () => {
     setOpen((v) => {
@@ -86,7 +101,7 @@ export default function NotificationBell() {
   };
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={toggle}
@@ -102,9 +117,7 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <>
-          <div className="fixed inset-0 z-30" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-40 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-ink/10 bg-surface p-2 shadow-hand">
+        <div className="absolute right-0 z-40 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-ink/10 bg-surface p-2 shadow-hand">
             <p className="mb-1 px-3 py-1.5 text-sm font-medium text-ink">{t('通知')}</p>
             {loading ? (
               <p className="flex items-center gap-2 px-3 py-6 text-sm text-ink/50">
@@ -149,7 +162,6 @@ export default function NotificationBell() {
               </div>
             )}
           </div>
-        </>
       )}
     </div>
   );
