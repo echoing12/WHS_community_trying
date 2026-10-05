@@ -78,11 +78,18 @@ function translateAuthError(err: Error): string {
 }
 
 // redirect: 登录成功后跳转的页面（来自 /auth/login?redirect=...，见 middleware / AuthGuard / 拦截器）
-export default function AuthForm({ redirect }: { redirect?: string | null }) {
+export default function AuthForm({
+  redirect,
+  initialMode = 'login',
+}: {
+  redirect?: string | null;
+  // initialMode: 由 /auth/login?mode=register 传入，让顶栏「注册」按钮直接打开注册表单
+  initialMode?: Mode;
+}) {
   const router = useRouter();
   const t = useT();
   const { refresh } = useAuth();
-  const [mode, setMode] = useState<Mode>('login');
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [handle, setHandle] = useState(''); // 登录名（注册） / 登录名或邮箱（登录）
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState(''); // 注册：确认密码

@@ -194,9 +194,18 @@ export default function Header() {
               </button>
             </div>
           ) : (
-            <Link href="/auth/login" className="ml-2">
-              <Button size="sm">{t('登录')}</Button>
-            </Link>
+            /* 未登录：登录 + 注册并列。注册直接带 ?mode=register，
+               点进去就是注册表单，不必再在卡片里切换一次 */
+            <div className="ml-2 flex items-center gap-2">
+              <Link href="/auth/login">
+                <Button size="sm">{t('登录')}</Button>
+              </Link>
+              <Link href="/auth/login?mode=register">
+                <Button size="sm" variant="solid">
+                  {t('注册')}
+                </Button>
+              </Link>
+            </div>
           ))}
         </nav>
 
@@ -283,9 +292,21 @@ export default function Header() {
                   </button>
                 </div>
               ) : (
-                <Link href="/auth/login" onClick={() => setMobileOpen(false)} className="block">
-                  <Button className="w-full">{t('登录 / 注册')}</Button>
-                </Link>
+                /* 未登录：移动端也把「登录 / 注册」拆成两个按钮，注册一键直达 */
+                <div className="grid grid-cols-2 gap-2">
+                  <Link href="/auth/login" onClick={() => setMobileOpen(false)} className="block">
+                    <Button className="w-full">{t('登录')}</Button>
+                  </Link>
+                  <Link
+                    href="/auth/login?mode=register"
+                    onClick={() => setMobileOpen(false)}
+                    className="block"
+                  >
+                    <Button variant="solid" className="w-full">
+                      {t('注册')}
+                    </Button>
+                  </Link>
+                </div>
               ))}
 
               {/* 发布区（登录后显示，移动端展开为列表） */}
