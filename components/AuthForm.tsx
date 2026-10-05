@@ -88,7 +88,7 @@ export default function AuthForm({
 }) {
   const router = useRouter();
   const t = useT();
-  const { refresh } = useAuth();
+  const { refresh, isAuthenticated, isLoading: authLoading } = useAuth();
   const [mode, setMode] = useState<Mode>(initialMode);
   const [handle, setHandle] = useState(''); // 登录名（注册） / 登录名或邮箱（登录）
   const [password, setPassword] = useState('');
@@ -100,6 +100,15 @@ export default function AuthForm({
   const [failedAttempts, setFailedAttempts] = useState(0);
   const [lockUntil, setLockUntil] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
+
+  // 已登录用户不该停留在登录/注册页 —— 这里依据 GET /api/session 的**真实会话结果**
+  // 判断（isLoading 结束且 isAuthenticated 为真才跳），而不是像原来的 middleware
+  // 那样只看 Cookie 是否存在。过期的 Cookie 会被正确判为「未登录」，
+  // 用户得以下正常打开登录/注册页（修复「点注册没反应」）。
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    router.replace(redirect ?? '/');
+  }, [authLoading, isAuthenticated, redirect, router]);
 
   // 锁定期间每秒刷新倒计时，到期自动解锁并重置计数
   useEffect(() => {

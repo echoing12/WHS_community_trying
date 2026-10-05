@@ -23,11 +23,12 @@ export function middleware(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   const hasSession = req.cookies.has(SESSION_COOKIE);
 
-  // 已登录用户访问登录页 → 跳回首页
-  if (pathname === '/auth' || pathname === '/auth/login') {
-    if (hasSession) return NextResponse.redirect(new URL('/', req.url));
-    return NextResponse.next();
-  }
+  // ⚠️ 刻意不在此处做「已登录访问登录页 → 跳回首页」：
+  //    Cookie 存在 ≠ 会话有效。数据库重置或会话被服务端撤销后，浏览器里
+  //    仍残留旧的 storyden-session；若按 Cookie 存在性重定向，用户会被
+  //    永久弹回首页、再也打不开登录/注册页（症状：点「登录」「注册」
+  //    毫无反应、不跳转）。该跳转改由 AuthForm 依据 GET /api/session
+  //    的真实结果在客户端执行（见 components/AuthForm.tsx）。
 
   // 未登录访问受保护路由 → 跳登录页并携带 redirect（登录后跳回原页面）
   const isProtected = PROTECTED_PATHS.some(
@@ -52,7 +53,5 @@ export const config = {
     '/collections/:path*',
     '/admin',
     '/admin/:path*',
-    '/auth',
-    '/auth/login',
   ],
 };
