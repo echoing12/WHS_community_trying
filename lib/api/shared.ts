@@ -52,6 +52,18 @@ export class RateLimitError extends Error {
   }
 }
 
+// 413 Payload Too Large: 上传的文件超过了请求体上限。
+// 来源有两个，现象完全一样：反向代理层（Nginx 的 client_max_body_size，
+// 默认只有 1MB）或 StoryDen 自身的请求体上限（默认 50MB）。
+// 单独区分出来，是因为「文件太大」和「上传失败」是两种完全不同的处置：
+// 前者压缩后重试即可，后者重试永远不会成功。
+export class PayloadTooLargeError extends Error {
+  constructor(message = tr('文件超过服务器允许的大小，请压缩后重试')) {
+    super(message);
+    this.name = 'PayloadTooLargeError';
+  }
+}
+
 // ============ axios 实例 ============
 // 基于Storyden官方规格:
 // - Storyden 使用基于 Cookie 的 Session 认证，Cookie 名为 storyden-session（注意是连字符）
@@ -126,6 +138,13 @@ api.interceptors.response.use(
       const message = isAuthEndpoint || skip ? '' : (IS_PRODUCTION ? '' : extractErrorMessage(error));
       if (!isAuthEndpoint && !skip) window.alert(message || tr('请求参数有误，请检查后重试'));
       return Promise.reject(new BadRequestError(message));
+    }
+
+    if (status === 413) {
+      // 413 通常由 Nginx（client_max_body_size 超限）直接返回 HTML 错误页，
+      // 响应体不是 StoryDen 的 JSON，extractErrorMessage 取不到 detail，
+      // 所以这里不拼接后端信息，只用固定文案并保留错误类型供调用方区分。
+      return Promise.reject(new PayloadTooLargeError());
     }
 
     // 其余状态码（404/409/422/429/5xx 等）：转成带状态码的 Error，

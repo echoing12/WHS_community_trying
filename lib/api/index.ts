@@ -10,6 +10,7 @@ export {
   PermissionDeniedError,
   BadRequestError,
   RateLimitError,
+  PayloadTooLargeError,
 } from './shared';
 export type { ApiRequestConfig } from './shared';
 

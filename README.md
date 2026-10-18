@@ -275,3 +275,4 @@ docker compose up -d --build   # --build: 首次需构建带限流插件的 Cadd
 | 页面报「加载失败 / 无法登录」 | 检查 `docker compose up -d` 是否已按新版配置重建（8000 端口映射）；`curl http://localhost:8000/api/threads` 应返回 JSON |
 | 注册/登录报 "An unexpected error occurred" | 检查 `.env` 里的地址协议是否和浏览器访问的一致（都是 https 或都是 http） |
 | 迁移后原账号登不上 | 检查 SESSION_KEY 是否与本地一致 |
+| 页面显示「文档上传失败，请重试」/「文件超过服务器允许的大小」 | 请求体被拦了。Nginx 默认 `client_max_body_size` 只有 1MB，超过就返回 413（前端根本收不到 JSON）。确认 `deploy/cookie-strip.conf`（纯 HTTP 部署时 `/api/*` 的必经之路）里有 `client_max_body_size 50m;`，或 `deploy/nginx.conf.example`（Nginx + PM2 方案）里有 `client_max_body_size 0;`。改完执行 `docker compose -f docker-compose.prod.yml restart cookie-strip`。用 `curl -o /dev/null -w "%{http_code}\n" -X POST "http://<站点>/api/assets?filename=t.pdf" --data-binary @9MB文件` 验证：返回 401（未登录）说明已经穿透代理，返回 413 说明上限还没放开 |

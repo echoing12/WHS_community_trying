@@ -325,7 +325,8 @@ export const en: Record<string, string> = {
     '{n} members have been removed temporarily (24h ban, auto-restored)',
   '上传中…': 'Uploading…',
   '上传文档附件（PDF / Word / Excel / TXT，≤20MB）': 'Upload a document (PDF / Word / Excel / TXT, ≤20MB)',
-  '上传视频（MP4 / WebM 等浏览器可播放格式）': 'Upload a video (MP4 / WebM or other browser-playable formats)',
+  '上传视频（MP4 / WebM 等浏览器可播放格式，≤50MB）':
+    'Upload a video (MP4 / WebM or other browser-playable formats, ≤50MB)',
   '不能取消自己的管理员权限': 'You cannot remove your own admin rights',
   '不能封禁自己': 'You cannot ban yourself',
   '个人资料加载失败，请检查网络后重试': 'Failed to load your profile. Check your network and try again.',
@@ -399,6 +400,8 @@ export const en: Record<string, string> = {
   '收藏夹加载失败，请检查网络后重试': 'Failed to load collections. Check your network and try again.',
   '收藏夹名称（如：康复资料）': 'Collection name (e.g. Recovery Resources)',
   '文件超过 {size}，请压缩后重试': 'File exceeds {size}. Compress it and try again.',
+  '文件超过服务器允许的大小，请压缩后重试':
+    'The file exceeds the size limit allowed by the server. Compress it and try again.',
   '文档': 'Document',
   '文档上传失败，请重试': 'Document upload failed. Try again.',
   '无权访问': 'Access denied',

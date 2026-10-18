@@ -2,17 +2,25 @@
 
 import { useRef, useState } from 'react';
 import { FileText, ImagePlus, Loader2, Video } from 'lucide-react';
-import { uploadAsset } from '@/lib/api';
+import { uploadAsset, PayloadTooLargeError } from '@/lib/api';
 import { useT } from '@/hooks/useLang';
 import { cn } from '@/lib/utils';
 
-// 前端上传限制（后端按魔数识别 MIME 无硬性限制，这里提前拦截避免无效的长耗时上传）
+// 前端上传限制：后端按魔数识别 MIME（不限类型），但对请求体有硬上限
+// StoryDen 的 MaxRequestSizeBytes = 50MB，反向代理（cookie-strip 的 Nginx）
+// 也按 50m 对齐。凡是写在这里的数字都不得超过 50MB，否则文件一定会在传输
+// 末尾被服务端拒绝（413），白等一次完整上传。
+const SERVER_MAX_UPLOAD = 50 * 1024 * 1024; // 与 StoryDen / Nginx 保持一致
+
 const SIZE_LIMITS: Record<string, number> = {
   image: 10 * 1024 * 1024, // 图片 ≤10MB
-  document: 20 * 1024 * 1024, // 文档 ≤20MB（原有限制）
-  video: 200 * 1024 * 1024, // 视频 ≤200MB
+  document: 20 * 1024 * 1024, // 文档 ≤20MB
+  // 视频曾经写 200MB，但后端上限只有 50MB —— 50~200MB 的文件永远传不上去。
+  // 要真正支持 200MB 得改 StoryDen 源码（MaxRequestSizeBytes）重新编译，
+  // 不能只调前端和 Nginx。
+  video: SERVER_MAX_UPLOAD, // 视频 ≤50MB（受服务端上限约束）
 };
-const SIZE_LIMIT_LABELS: Record<string, string> = { image: '10MB', document: '20MB', video: '200MB' };
+const SIZE_LIMIT_LABELS: Record<string, string> = { image: '10MB', document: '20MB', video: '50MB' };
 
 // 文档扩展名白名单（accept 属性可被绕过，这里做兜底校验）
 const DOC_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt'];
@@ -85,14 +93,22 @@ export default function FileUploader({
           ? `\n[📄 ${file.name}](${path})\n`
           : `\n![${file.name}](${path})\n`
       );
-    } catch {
-      setError(
-        isImage
-          ? t('图片上传失败，请重试（支持常见图片格式）')
-          : isVideo
-            ? t('视频上传失败，请重试（支持 MP4 / WebM 等常见格式）')
-            : t('文档上传失败，请重试')
-      );
+    } catch (err) {
+      // 413（请求体超限）必须单独提示：这既可能是 Nginx 的
+      // client_max_body_size（默认 1MB）拦的，也可能是 StoryDen 的
+      // 50MB 上限拦的，跟「文件格式不支持」是两回事 —— 提示用户
+      // 「重试」只会让人反复传同一个文件。
+      if (err instanceof PayloadTooLargeError) {
+        setError(err.message);
+      } else {
+        setError(
+          isImage
+            ? t('图片上传失败，请重试（支持常见图片格式）')
+            : isVideo
+              ? t('视频上传失败，请重试（支持 MP4 / WebM 等常见格式）')
+              : t('文档上传失败，请重试')
+        );
+      }
     } finally {
       setUploading(false);
     }
@@ -108,7 +124,7 @@ export default function FileUploader({
           isImage
             ? t('插入图片')
             : isVideo
-              ? t('上传视频（MP4 / WebM 等浏览器可播放格式）')
+              ? t('上传视频（MP4 / WebM 等浏览器可播放格式，≤50MB）')
               : t('上传文档附件（PDF / Word / Excel / TXT，≤20MB）')
         }
         className="inline-flex items-center gap-1 rounded-lg border border-ink/15 px-3 py-1 text-xs font-medium transition-colors hover:border-ink/30 hover:bg-ink/5 disabled:opacity-50"
